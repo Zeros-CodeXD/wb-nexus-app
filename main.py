@@ -3,46 +3,45 @@ import json
 import webbrowser
 import os
 import time
-import threading
 
 def main(page: ft.Page):
-    # --- 1. APP CONFIGURATION ---
+    # --- 1. CONFIG ---
     page.title = "WB Nexus"
-    page.window_icon = "icon.png"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.spacing = 0
-    page.window_width = 400
-    page.window_height = 800
-    
-    # Modern Material 3 Theme
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # --- 2. DATABASE (ANDROID COMPATIBLE) ---
+    # --- ERROR LOGGING WIDGET (To see why it crashes) ---
+    debug_text = ft.Text("Initializing...", color="red", size=12)
+    
+    # --- 2. DATABASE LOADING (ANDROID FIXED) ---
     database = {}
     
-    # On Android, Flet automatically maps the 'assets' folder to the root
-    # So we just ask for 'assets/assets.json'
-    json_path = 'assets/assets.json'
-
     try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            database = json.load(f)
+        # On Android/Flet, assets are usually relative to the root
+        # We try two common paths
+        possible_paths = ['assets/assets.json', 'assets.json']
+        json_loaded = False
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    database = json.load(f)
+                json_loaded = True
+                debug_text.value = f"Loaded from: {path}"
+                break
+        
+        if not json_loaded:
+            debug_text.value = "ERROR: assets.json not found in APK bundle."
+            
     except Exception as e:
-        # If that fails (sometimes happens on PC debug), try absolute path
-        try:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            abs_path = os.path.join(script_dir, 'assets', 'assets.json')
-            with open(abs_path, 'r', encoding='utf-8') as f:
-                database = json.load(f)
-        except:
-            pass
+        debug_text.value = f"CRASH: {str(e)}"
 
-    # --- 3. UTILITY FUNCTIONS ---
+    # --- 3. UI COMPONENTS ---
     def handle_click(e):
         if e.control.data: webbrowser.open(e.control.data)
 
-    # --- 4. COMPONENT: RESOURCE CARD (Books/Papers/Syllabus) ---
     def create_card(title, link, icon_name, color):
         return ft.Container(
             content=ft.Row([
@@ -61,11 +60,9 @@ def main(page: ft.Page):
             bgcolor="#1f1f1f", border_radius=12
         )
 
-    # --- 5. COMPONENT: COLLEGE CARD ---
     def create_college_card(item):
         status_col = "green" if item['seats'] > 0 else "red"
         status_text = f"{item['seats']} SEATS" if item['seats'] > 0 else "FULL"
-
         return ft.Container(
             content=ft.Column([
                 ft.Row([
@@ -83,40 +80,21 @@ def main(page: ft.Page):
             padding=15, margin=ft.margin.only(bottom=10), bgcolor="#252525", border_radius=15
         )
 
-    # --- 6. COMPONENT: NOTIFICATION BANNER ---
-    def create_notification():
-        # You can add a "notification" key to your assets.json later to make this dynamic
-        # For now, we hardcode a sample alert
-        news_text = "📢 UPDATE: Madhyamik 2025 Routine Released! Check Syllabus."
-        news_link = "https://wbbse.wb.gov.in"
-        
-        return ft.Container(
-            content=ft.Row([
-                ft.Icon(ft.icons.CAMPAIGN, color="black"),
-                ft.Text(news_text, color="black", weight="bold", size=12, expand=True),
-                ft.Icon(ft.icons.ARROW_FORWARD, color="black", size=16)
-            ]),
-            bgcolor="amber",
-            padding=10,
-            border_radius=8,
-            margin=ft.margin.only(bottom=15),
-            on_click=lambda e: webbrowser.open(news_link)
-        )
-
-    # --- 7. MAIN DASHBOARD LOGIC ---
+    # --- 4. DASHBOARD BUILDER ---
     def load_dashboard():
-        page.clean()
+        # DO NOT use page.clean() immediately, or we lose the debug info if it crashes
+        # Instead, we overwrite the content
         
         current_tab_index = [0]
         content_area = ft.Column(expand=True, scroll="auto", spacing=10)
 
-        # --- CONTENT BUILDER ---
+        # Content Builder
         def update_list_view(search_query=""):
             content_area.controls.clear()
             
-            # 1. ALWAYS ADD NOTIFICATION AT THE TOP
-            content_area.controls.append(create_notification())
-            
+            # Debug info at top (Temporary)
+            # content_area.controls.append(debug_text) 
+
             idx = current_tab_index[0]
             query = search_query.lower()
             def match(text): return query in text.lower()
@@ -124,12 +102,15 @@ def main(page: ft.Page):
             # TAB 0: BOOKS
             if idx == 0:
                 keys = ["books_class_10", "books_class_9", "books_class_8"]
+                found = False
                 for k in keys:
                     if k in database:
+                        found = True
                         filtered = [x for x in database[k] if match(x['title'])]
                         if filtered:
                             content_area.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), size=12, weight="bold", color="orange"))
                             for x in filtered: content_area.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+                if not found: content_area.controls.append(ft.Text("Database empty or not loaded.", color="red"))
 
             # TAB 1: PAPERS
             elif idx == 1:
@@ -157,29 +138,17 @@ def main(page: ft.Page):
                         content_area.controls.append(ft.Text("SEARCH RESULTS", size=12, weight="bold", color="green"))
                         for x in filtered: content_area.controls.append(create_college_card(x))
 
-            # Empty State
-            if len(content_area.controls) == 1: # Only notification exists
-                content_area.controls.append(ft.Text("No results found.", color="grey", italic=True))
-            
             page.update()
 
-        # --- EVENTS ---
         def on_search(e): update_list_view(e.control.value)
-        
         def on_nav_change(e):
             current_tab_index[0] = e.control.selected_index
-            search_field.value = ""
             update_list_view("")
 
-        # --- UI LAYOUT ---
         search_field = ft.TextField(
             prefix_icon=ft.icons.SEARCH,
             hint_text="Search resources...",
-            text_size=12,
-            height=40,
-            border_radius=20,
-            bgcolor="#222",
-            border_width=0,
+            text_size=12, height=40, border_radius=20, bgcolor="#222", border_width=0,
             on_change=on_search
         )
 
@@ -207,38 +176,34 @@ def main(page: ft.Page):
             ]
         )
 
-        update_list_view("")
+        page.clean()
         page.add(app_bar, ft.Container(content=content_area, expand=True, padding=20), nav)
+        update_list_view("")
 
-    # --- 8. SPLASH SCREEN ---
-    def run_splash_sequence():
-        logo_icon = ft.Icon(name=ft.icons.SHIELD_MOON, size=0, color="cyan")
-        logo_text = ft.Text("WB NEXUS", size=0, weight="bold", opacity=0)
-        sub_text = ft.Text("Your Academic Companion", size=12, color="grey", opacity=0)
+    # --- 5. SPLASH SCREEN (Simplified) ---
+    # We removed the opacity animation because sometimes it causes black screen on low-end phones
+    # We just show logo -> wait -> load
+    
+    logo_icon = ft.Icon(name=ft.icons.SHIELD_MOON, size=80, color="cyan")
+    logo_text = ft.Text("WB NEXUS", size=30, weight="bold")
+    
+    splash = ft.Container(
+        content=ft.Column([logo_icon, logo_text, debug_text], 
+                        alignment="center", horizontal_alignment="center", spacing=10),
+        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
+    )
 
-        splash = ft.Container(
-            content=ft.Column([logo_icon, logo_text, sub_text], 
-                            alignment="center", horizontal_alignment="center", spacing=10),
-            alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
-        )
-
-        page.add(splash)
-        page.update()
-
-        time.sleep(0.5)
-        logo_icon.size = 80; logo_icon.update()
-        time.sleep(0.3)
-        logo_text.size = 30; logo_text.opacity = 1; logo_text.update()
-        sub_text.opacity = 1; sub_text.update()
-        time.sleep(1.5)
-        splash.opacity = 0; splash.animate_opacity = 500; splash.update()
-        time.sleep(0.5)
-        
+    page.add(splash)
+    
+    # Wait a bit then load dashboard if no critical error
+    # We use a thread so the UI doesn't freeze
+    def transition_to_app():
+        time.sleep(2)
+        # Only load if database worked (or even if it didn't, show empty UI)
         load_dashboard()
 
-    run_splash_sequence()
+    t = threading.Thread(target=transition_to_app)
+    t.start()
 
 if __name__ == "__main__":
-
     ft.app(target=main)
-
