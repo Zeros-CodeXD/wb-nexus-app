@@ -8,6 +8,7 @@ import threading
 def main(page: ft.Page):
     # --- 1. APP CONFIGURATION ---
     page.title = "WB Nexus"
+    page.window_icon = "icon.png"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.spacing = 0
@@ -240,3 +241,4 @@ def main(page: ft.Page):
 if __name__ == "__main__":
 
     ft.app(target=main)
+
