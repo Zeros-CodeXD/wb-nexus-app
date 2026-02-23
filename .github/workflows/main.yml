@@ -18,18 +18,20 @@ jobs:
           channel: 'stable'
           flutter-version: '3.27.0'
 
+      - name: Install Dependencies
+        run: |
+          pip install flet --upgrade
+          # Ensure flet-cli is ready
+          flet --version
+
       - name: Build APK
         run: |
-          pip install flet
-          # We MUST include --assets assets so the JSON folder is built into the APK
-          yes | flet build apk main.py --assets assets --product "WB-NEXUS"
-
-      - name: Rename and Upload
-        run: |
-          mv build/apk/*.apk WB-NEXUS-Final.apk
+          # We don't use --assets anymore. Flet looks for an 'assets' folder by default.
+          # If your folder is named 'assets', it will be included automatically.
+          flet build apk main.py --product "WB-NEXUS"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WB-NEXUS-V1
-          path: WB-NEXUS-Final.apk
+          name: WB-NEXUS-Final
+          path: "**/build/apk/*.apk"
