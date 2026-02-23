@@ -21,16 +21,15 @@ jobs:
 
       - name: Install Flet
         run: |
+          pip install --upgrade pip
           pip install flet
-          # We check the version to ensure it's installed correctly
-          flet --version
 
       - name: Build APK
         run: |
-          # 1. We provide the 'y' via printf for the bootstrap
-          # 2. We put the filename 'main.py' immediately after 'apk'
-          # 3. We ensure the assets flag is formatted correctly
-          printf 'y\n' | flet build apk main.py --project "wb_nexus" --product "WB-NEXUS" --assets "assets"
+          # We use printf to pipe 'y' for any prompts.
+          # The script 'main.py' comes AFTER the subcommand 'apk'.
+          # The flags --project, --product, and --assets follow.
+          printf 'y\n' | flet build apk main.py --project wb_nexus --product "WB-NEXUS" --assets assets
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
