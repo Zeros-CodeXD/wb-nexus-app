@@ -3,9 +3,10 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Changed to ubuntu-latest (faster and cheaper for APKs)
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -18,20 +19,18 @@ jobs:
           channel: 'stable'
           flutter-version: '3.27.0'
 
-      - name: Install Flet and Dependencies
-        run: |
-          pip install flet
-          # If using Linux, ensure you have the necessary build tools
-          # For APKs, Flutter handles most of it, but flet needs to be initialized
+      - name: Install Flet
+        run: pip install flet
 
       - name: Build APK
         run: |
-          # Use printf to handle the 'y' input more reliably across different shells
-          printf 'y\n' | flet build apk --project "WB-NEXUS" --assets assets main.py
+          # We use 'printf' to auto-confirm the 'Do you want to continue? [y/N]' prompt
+          # The order MUST be: flet build apk <file> <options>
+          printf 'y\n' | flet build apk main.py --project wb_nexus --product "WB-NEXUS" --assets assets
 
-      - name: Rename and Upload Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: WB-NEXUS-V1
-          # Flet usually outputs to build/apk/ - we point directly to the file
+          # Flet puts the output in build/apk
           path: build/apk/*.apk
