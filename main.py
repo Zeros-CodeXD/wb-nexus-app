@@ -4,7 +4,7 @@ import flet as ft
 DATABASE = {
     "books_class_8": [
         {"title": "Class 8 Science (Poribesh O Bigyan)", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view?usp=sharing"},
-        {"title": "Class 8 Mathematics (Ganit Prabha)", "link": ""},
+        {"title": "Class 8 Mathematics (Ganit Prabha)", "link": "https://wbbse.wb.gov.in"},
         {"title": "Class 8 English (Blossoms)", "link": "https://drive.google.com/file/d/1ETK2c1uJ802-hOiy0AsYHcmt8imEv_Fw/view?usp=drive_link"},
         {"title": "Class 8 Bengali Text (Sahitya Mela)", "link": "https://drive.google.com/file/d/197KM-v4IG5Zq7SwebNJ1kXv4OuSCwVDF/view?usp=drive_link"},
         {"title": "Class 8 Bengali Grammar", "link": "https://drive.google.com/file/d/1oVPMJrl6iYGF_tYeIzCYpwRBpxd9vLg3/view?usp=drive_link"},
@@ -62,18 +62,15 @@ DATABASE = {
 }
 
 def main(page: ft.Page):
-    # --- 1. CONFIG ---
     page.title = "WB Nexus"
     page.theme_mode = ft.ThemeMode.DARK
     page.scroll = "auto"
     
-    # --- 2. LINK LAUNCHER ---
     def open_link(e):
         url = e.control.data
         if url:
             page.launch_url(url)
 
-    # --- 3. UI BUILDERS ---
     def create_card(title, link, icon_name, color):
         return ft.Container(
             content=ft.Row([
@@ -101,46 +98,38 @@ def main(page: ft.Page):
             bgcolor="#252525", padding=10, border_radius=10, margin=ft.margin.only(bottom=10)
         )
 
-    # --- 4. TABS ---
-    # BOOKS TAB
+    # --- TABS ---
     books_content = ft.Column(scroll="auto")
     for key in ["books_class_10", "books_class_9", "books_class_8"]:
         books_content.controls.append(ft.Text(key.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
         for item in DATABASE[key]:
             books_content.controls.append(create_card(item['title'], item['link'], ft.icons.BOOK, "orange"))
 
-    # PAPERS TAB
     papers_content = ft.Column(scroll="auto")
     for key in ["papers_2024", "papers_2023", "papers_2022"]:
         papers_content.controls.append(ft.Text(key.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
         for item in DATABASE[key]:
             papers_content.controls.append(create_card(item['title'], item['link'], ft.icons.DESCRIPTION, "cyan"))
 
-    # COLLEGE & SYLLABUS TABS
     college_content = ft.ListView([create_college_card(x) for x in DATABASE["colleges"]])
     syllabus_content = ft.ListView([create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple") for x in DATABASE["syllabus_2025"]])
 
     tabs = ft.Tabs(
         selected_index=0,
-        animation_duration=300,
+        expand=1,
         tabs=[
             ft.Tab(text="Books", icon=ft.icons.BOOK, content=books_content),
             ft.Tab(text="Papers", icon=ft.icons.DESCRIPTION, content=papers_content),
             ft.Tab(text="Colleges", icon=ft.icons.SCHOOL, content=college_content),
             ft.Tab(text="Syllabus", icon=ft.icons.LIST, content=syllabus_content),
-        ],
-        expand=1
+        ]
     )
 
-    # --- 5. LAYOUT ---
     page.add(
-        ft.Container(
-            content=ft.Text("WB NEXUS", size=25, weight="bold", color="cyan"),
-            padding=20, alignment=ft.alignment.center
-        ),
+        ft.Container(content=ft.Text("WB NEXUS", size=25, weight="bold", color="cyan"), padding=20, alignment=ft.alignment.center),
         tabs
     )
-    page.update() # Forces the UI to draw on the phone
+    page.update()
 
 if __name__ == "__main__":
     ft.app(target=main)
