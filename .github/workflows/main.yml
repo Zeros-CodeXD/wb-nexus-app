@@ -20,17 +20,20 @@ jobs:
           flutter-version: '3.27.0'
 
       - name: Install Flet
-        run: pip install flet
+        run: |
+          pip install flet
+          # We check the version to ensure it's installed correctly
+          flet --version
 
       - name: Build APK
         run: |
-          # We use 'printf' to auto-confirm the 'Do you want to continue? [y/N]' prompt
-          # The order MUST be: flet build apk <file> <options>
-          printf 'y\n' | flet build apk main.py --project wb_nexus --product "WB-NEXUS" --assets assets
+          # 1. We provide the 'y' via printf for the bootstrap
+          # 2. We put the filename 'main.py' immediately after 'apk'
+          # 3. We ensure the assets flag is formatted correctly
+          printf 'y\n' | flet build apk main.py --project "wb_nexus" --product "WB-NEXUS" --assets "assets"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: WB-NEXUS-V1
-          # Flet puts the output in build/apk
           path: build/apk/*.apk
