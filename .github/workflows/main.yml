@@ -1,9 +1,5 @@
 name: Build WB-NEXUS APK
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -11,35 +7,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install Flet
-        run: |
-          pip install flet
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.27.0' 
+          flutter-version: '3.27.0'
 
       - name: Build APK
         run: |
-          # This command ensures we are in the same folder as main.py
-          cd $(dirname $(find . -name "main.py" | head -n 1))
-          yes | flet build apk main.py --product "WB-NEXUS"
+          pip install flet
+          # We MUST include --assets assets so the JSON folder is built into the APK
+          yes | flet build apk main.py --assets assets --product "WB-NEXUS"
 
-      - name: Rename and Move APK
+      - name: Rename and Upload
         run: |
-          # Find the generated APK regardless of where it was built
-          find build/apk -name "*.apk" -exec mv {} WB-NEXUS.apk \;
+          mv build/apk/*.apk WB-NEXUS-Final.apk
 
-      - name: Upload APK
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WB-NEXUS
-          path: WB-NEXUS.apk
+          name: WB-NEXUS-V1
+          path: WB-NEXUS-Final.apk
