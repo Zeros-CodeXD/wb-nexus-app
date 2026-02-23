@@ -3,7 +3,7 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest  # Changed to ubuntu-latest (faster and cheaper for APKs)
     steps:
       - uses: actions/checkout@v4
 
@@ -12,25 +12,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Flet
-        run: |
-          pip install flet --upgrade
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          # Updated version to prevent Flet from asking to upgrade
-          flutter-version: '3.27.3' 
+          flutter-version: '3.27.0'
+
+      - name: Install Flet and Dependencies
+        run: |
+          pip install flet
+          # If using Linux, ensure you have the necessary build tools
+          # For APKs, Flutter handles most of it, but flet needs to be initialized
 
       - name: Build APK
         run: |
-          # 1. We use --no-interactive to stop it from asking [y/n] questions
-          # 2. Flet 0.80.x uses the assets folder automatically
-          flet build apk main.py --product "WB-NEXUS" --no-interactive
+          # Use printf to handle the 'y' input more reliably across different shells
+          printf 'y\n' | flet build apk --project "WB-NEXUS" --assets assets main.py
 
-      - name: Upload APK
+      - name: Rename and Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WB-NEXUS-Final-APK
-          path: "**/build/apk/*.apk"
+          name: WB-NEXUS-V1
+          # Flet usually outputs to build/apk/ - we point directly to the file
+          path: build/apk/*.apk
