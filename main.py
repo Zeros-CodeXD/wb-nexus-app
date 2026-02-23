@@ -19,16 +19,23 @@ def main(page: ft.Page):
 
     # --- 2. DATABASE (ANDROID COMPATIBLE) ---
     database = {}
-    # Flet automatically looks inside the 'assets' folder
-    # but we just reference the file name relative to the root if assets_dir is set
+    
+    # On Android, Flet automatically maps the 'assets' folder to the root
+    # So we just ask for 'assets/assets.json'
+    json_path = 'assets/assets.json'
+
     try:
-        # On Android, we just open the file directly if it's bundled correctly
-        # However, for Flet packaging, we usually read from the assets folder
-        with open('assets/assets.json', 'r', encoding='utf-8') as f:
+        with open(json_path, 'r', encoding='utf-8') as f:
             database = json.load(f)
-    except: 
-        # Fallback for some environments
-        pass
+    except Exception as e:
+        # If that fails (sometimes happens on PC debug), try absolute path
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            abs_path = os.path.join(script_dir, 'assets', 'assets.json')
+            with open(abs_path, 'r', encoding='utf-8') as f:
+                database = json.load(f)
+        except:
+            pass
 
     # --- 3. UTILITY FUNCTIONS ---
     def handle_click(e):
@@ -231,4 +238,5 @@ def main(page: ft.Page):
     run_splash_sequence()
 
 if __name__ == "__main__":
+
     ft.app(target=main)
