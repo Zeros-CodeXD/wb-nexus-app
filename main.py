@@ -1,6 +1,8 @@
 import flet as ft
+import json
+import os
 
-# --- 1. THE FULL DATABASE ---
+# --- THE HARDCODED DATABASE (Always works, even without JSON) ---
 DATABASE = {
     "books_class_8": [
         {"title": "Class 8 Science (Poribesh O Bigyan)", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view?usp=sharing"},
@@ -62,14 +64,28 @@ DATABASE = {
 }
 
 def main(page: ft.Page):
-    page.title = "WB Nexus"
+    page.title = "WB-NEXUS"
     page.theme_mode = ft.ThemeMode.DARK
     page.scroll = "auto"
+
+    # --- ATTEMPT TO LOAD JSON ASSETS ---
+    asset_data = {}
+    # On Android, the assets folder is mapped directly.
+    # We try both paths to be safe (dev vs prod)
+    json_filename = "your_file.json" # <--- REPLACE WITH YOUR ACTUAL FILENAME
+    possible_paths = [os.path.join("assets", json_filename), json_filename, f"/{json_filename}"]
     
+    for path in possible_paths:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                asset_data = json.load(f)
+                break 
+        except:
+            continue
+
     def open_link(e):
         url = e.control.data
-        if url:
-            page.launch_url(url)
+        if url: page.launch_url(url)
 
     def create_card(title, link, icon_name, color):
         return ft.Container(
@@ -77,59 +93,55 @@ def main(page: ft.Page):
                 ft.Icon(icon_name, color=color),
                 ft.Column([
                     ft.Text(title, weight="bold", size=14, width=220, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                    ft.Text("Tap to Open", size=10, color="grey")
+                    ft.Text("Tap to View PDF", size=10, color="grey")
                 ]),
-                ft.IconButton(ft.icons.OPEN_IN_NEW, icon_color="white", data=link, on_click=open_link)
+                ft.IconButton(ft.icons.ARROW_FORWARD_IOS, icon_size=15, data=link, on_click=open_link)
             ], alignment="spaceBetween"),
-            bgcolor="#1f1f1f", padding=10, border_radius=10, margin=ft.margin.only(bottom=5),
-            on_click=open_link, data=link
+            bgcolor="#1f1f1f", padding=12, border_radius=12, 
+            on_click=open_link, data=link, margin=ft.margin.only(bottom=8)
         )
 
-    def create_college_card(item):
-        col = "green" if item['seats'] > 0 else "red"
-        return ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Text(item['name'], weight="bold", size=16),
-                    ft.Container(content=ft.Text(f"{item['seats']} SEATS", color="black", size=10), bgcolor=col, padding=5, border_radius=5)
-                ]),
-                ft.ElevatedButton("Apply", data=item['link'], on_click=open_link, height=30)
-            ]),
-            bgcolor="#252525", padding=10, border_radius=10, margin=ft.margin.only(bottom=10)
+    # --- UI TABS ---
+    
+    # Tab 1: Books
+    books_col = ft.Column(scroll="auto", spacing=10)
+    for cat in ["books_class_10", "books_class_9", "books_class_8"]:
+        books_col.controls.append(ft.Text(cat.replace("_", " ").upper(), size=18, weight="bold", color="orange"))
+        for item in DATABASE[cat]:
+            books_col.controls.append(create_card(item['title'], item['link'], ft.icons.BOOK, "orange"))
+
+    # Tab 2: Papers
+    papers_col = ft.Column(scroll="auto", spacing=10)
+    for cat in ["papers_2024", "papers_2023", "papers_2022"]:
+        papers_col.controls.append(ft.Text(cat.replace("_", " ").upper(), size=18, weight="bold", color="cyan"))
+        for item in DATABASE[cat]:
+            papers_col.controls.append(create_card(item['title'], item['link'], ft.icons.DESCRIPTION, "cyan"))
+
+    # Tab 3: Colleges & JSON Data
+    college_col = ft.Column(scroll="auto", spacing=10)
+    college_col.controls.append(ft.Text("TOP COLLEGES", size=18, weight="bold", color="green"))
+    for item in DATABASE["colleges"]:
+        status = "Available" if item['seats'] > 0 else "Full"
+        college_col.controls.append(
+            ft.ListTile(title=ft.Text(item['name']), subtitle=ft.Text(f"{item['stream']} - Seats: {status}"), 
+                        trailing=ft.IconButton(ft.icons.LANGUAGE, data=item['link'], on_click=open_link))
         )
-
-    # --- TABS ---
-    books_content = ft.Column(scroll="auto")
-    for key in ["books_class_10", "books_class_9", "books_class_8"]:
-        books_content.controls.append(ft.Text(key.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-        for item in DATABASE[key]:
-            books_content.controls.append(create_card(item['title'], item['link'], ft.icons.BOOK, "orange"))
-
-    papers_content = ft.Column(scroll="auto")
-    for key in ["papers_2024", "papers_2023", "papers_2022"]:
-        papers_content.controls.append(ft.Text(key.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-        for item in DATABASE[key]:
-            papers_content.controls.append(create_card(item['title'], item['link'], ft.icons.DESCRIPTION, "cyan"))
-
-    college_content = ft.ListView([create_college_card(x) for x in DATABASE["colleges"]])
-    syllabus_content = ft.ListView([create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple") for x in DATABASE["syllabus_2025"]])
-
-    tabs = ft.Tabs(
-        selected_index=0,
-        expand=1,
-        tabs=[
-            ft.Tab(text="Books", icon=ft.icons.BOOK, content=books_content),
-            ft.Tab(text="Papers", icon=ft.icons.DESCRIPTION, content=papers_content),
-            ft.Tab(text="Colleges", icon=ft.icons.SCHOOL, content=college_content),
-            ft.Tab(text="Syllabus", icon=ft.icons.LIST, content=syllabus_content),
-        ]
-    )
 
     page.add(
-        ft.Container(content=ft.Text("WB NEXUS", size=25, weight="bold", color="cyan"), padding=20, alignment=ft.alignment.center),
-        tabs
+        ft.Container(
+            content=ft.Text("WB-NEXUS", size=28, weight="bold", color="cyan", letter_spacing=2),
+            alignment=ft.alignment.center, padding=20
+        ),
+        ft.Tabs(
+            selected_index=0,
+            expand=1,
+            tabs=[
+                ft.Tab(text="Books", icon=ft.icons.LIBRARY_BOOKS, content=books_col),
+                ft.Tab(text="Papers", icon=ft.icons.HISTORY_EDU, content=papers_col),
+                ft.Tab(text="Colleges", icon=ft.icons.SCHOOL, content=college_col),
+            ]
+        )
     )
-    page.update()
 
 if __name__ == "__main__":
     ft.app(target=main)
