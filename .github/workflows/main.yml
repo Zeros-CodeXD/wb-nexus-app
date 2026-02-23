@@ -28,9 +28,9 @@ jobs:
 
     - name: Build APK
       run: |
-        # We run the build command without the old flag
-        # This assumes your main.py is in the root of the repo
-        flet build apk --verbose
+        # The 'yes' command repeatedly types 'y' into the terminal
+        # This answers the "Do you want to install Flutter?" question automatically
+        yes | flet build apk --verbose
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
