@@ -1,209 +1,181 @@
 import flet as ft
-import json
 import webbrowser
-import os
-import time
+import asyncio # New way to handle time without crashing
 
-def main(page: ft.Page):
-    # --- 1. CONFIG ---
+# --- DATA (EMBEDDED TO PREVENT CRASHES) ---
+# We put the data right here so the phone doesn't have to search for a file
+DATABASE = {
+  "books_class_8": [
+    {"title": "Class 8 Science (Poribesh O Bigyan)", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view?usp=sharing"},
+    {"title": "Class 8 English (Blossoms)", "link": "https://drive.google.com/file/d/1ETK2c1uJ802-hOiy0AsYHcmt8imEv_Fw/view?usp=drive_link"},
+    {"title": "Class 8 Bengali Text", "link": "https://drive.google.com/file/d/197KM-v4IG5Zq7SwebNJ1kXv4OuSCwVDF/view?usp=drive_link"},
+    {"title": "Class 8 History", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view?usp=drive_link"},
+    {"title": "Class 8 Geography", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view?usp=drive_link"}
+  ],
+  "books_class_9": [
+    {"title": "Class 9 Bengali Text", "link": "https://drive.google.com/file/d/1W1iXt6ba7cKGXK06wU0PdDAP9yq_BNdI/view?usp=drive_link"},
+    {"title": "Class 9 Mathematics", "link": "https://drive.google.com/file/d/1bLVwDsYfENQPta5O6w6DQMOvFURorsJj/view?usp=drive_link"},
+    {"title": "Class 9 English", "link": "https://drive.google.com/file/d/1MJfjJt_9UrG04iMAanWz2izBx_RaBsgc/view?usp=drive_link"}
+  ],
+  "books_class_10": [
+    {"title": "Class 10 Bengali Text", "link": "https://drive.google.com/file/d/1iQAADSemG8pJCG2phDGwGEdrpNGG1_9m/view?usp=drive_link"},
+    {"title": "Class 10 Mathematics", "link": "https://drive.google.com/file/d/11TITkwOSGAFYSz015YStiaxUOUExTkfa/view?usp=drive_link"},
+    {"title": "Class 10 English", "link": "https://drive.google.com/file/d/1J8ACc0y2ftQ_wSjEqx-C0sA_d8ZjImkx/view?usp=drive_link"}
+  ],
+  "papers_2024": [
+    {"title": "Madhyamik 2024 - Bengali", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view?usp=drive_link"},
+    {"title": "Madhyamik 2024 - English", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view?usp=drive_link"},
+    {"title": "Madhyamik 2024 - Math", "link": "https://drive.google.com/file/d/1K21V1xGZEAFGXsGjojFzTo74KqpDFmC-/view?usp=drive_link"},
+    {"title": "Madhyamik 2024 - Phy Science", "link": "https://drive.google.com/file/d/1isrdJmWektP7UNi4heeYF52jcuzHHFqF/view?usp=drive_link"}
+  ],
+  "papers_2023": [
+    {"title": "Madhyamik 2023 - All Papers", "link": "https://drive.google.com/drive/folders/YOUR_LINK"}
+  ],
+  "colleges": [
+    {"name": "Jadavpur University", "stream": "Science", "seats": 15, "link": "https://jadavpuruniversity.in/"},
+    {"name": "Presidency Univ", "stream": "Arts", "seats": 0, "link": "https://presiuniv.ac.in/"},
+    {"name": "Scottish Church", "stream": "Physics", "seats": 8, "link": "https://www.scottishchurch.ac.in/"}
+  ],
+  "syllabus_2025": [
+    {"title": "Madhyamik 2025 Syllabus", "link": "https://wbbse.wb.gov.in"}
+  ]
+}
+
+# --- MAIN APP (ASYNC MODE) ---
+# We use 'async' to make the splash screen smooth without freezing
+async def main(page: ft.Page):
+    # 1. CONFIG
     page.title = "WB Nexus"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # --- ERROR LOGGING WIDGET (To see why it crashes) ---
-    debug_text = ft.Text("Initializing...", color="red", size=12)
-    
-    # --- 2. DATABASE LOADING (ANDROID FIXED) ---
-    database = {}
-    
-    try:
-        # On Android/Flet, assets are usually relative to the root
-        # We try two common paths
-        possible_paths = ['assets/assets.json', 'assets.json']
-        json_loaded = False
-        
-        for path in possible_paths:
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    database = json.load(f)
-                json_loaded = True
-                debug_text.value = f"Loaded from: {path}"
-                break
-        
-        if not json_loaded:
-            debug_text.value = "ERROR: assets.json not found in APK bundle."
-            
-    except Exception as e:
-        debug_text.value = f"CRASH: {str(e)}"
-
-    # --- 3. UI COMPONENTS ---
+    # 2. UTILS
     def handle_click(e):
         if e.control.data: webbrowser.open(e.control.data)
 
+    # 3. CARD CREATORS
     def create_card(title, link, icon_name, color):
         return ft.Container(
             content=ft.Row([
-                ft.Container(
-                    content=ft.Icon(icon_name, color=color, size=24),
-                    padding=10, bgcolor=ft.colors.with_opacity(0.1, color), border_radius=10
-                ),
+                ft.Icon(icon_name, color=color, size=24),
                 ft.Column([
                     ft.Text(title, size=14, weight="bold", max_lines=1, overflow="ellipsis", color="white"),
-                    ft.Text("Official PDF", size=11, color="grey"),
+                    ft.Text("Tap to Open", size=10, color="grey"),
                 ], expand=True, spacing=2),
-                ft.IconButton(ft.icons.VISIBILITY, icon_color="white", data=link, on_click=handle_click),
                 ft.IconButton(ft.icons.DOWNLOAD, icon_color=color, data=link, on_click=handle_click)
             ], alignment="spaceBetween"),
             padding=10, margin=ft.margin.only(bottom=5),
-            bgcolor="#1f1f1f", border_radius=12
+            bgcolor="#1f1f1f", border_radius=12,
+            on_click=handle_click, data=link # Make whole card clickable
         )
 
     def create_college_card(item):
         status_col = "green" if item['seats'] > 0 else "red"
-        status_text = f"{item['seats']} SEATS" if item['seats'] > 0 else "FULL"
+        status_txt = f"{item['seats']} LEFT" if item['seats'] > 0 else "FULL"
         return ft.Container(
             content=ft.Column([
                 ft.Row([
                     ft.Text(item['name'], size=16, weight="bold", expand=True),
-                    ft.Container(content=ft.Text(status_text, size=10, weight="bold", color="black"), 
+                    ft.Container(content=ft.Text(status_txt, size=10, color="black", weight="bold"), 
                                  bgcolor=status_col, padding=5, border_radius=5)
                 ]),
-                ft.Divider(height=10, color="grey"),
+                ft.Divider(height=5, color="grey"),
                 ft.Row([
-                    ft.Text(f"Stream: {item['stream']}", size=11, color="grey"),
-                    ft.ElevatedButton("Apply", height=30, style=ft.ButtonStyle(color="white", bgcolor="blue"), 
+                    ft.Text(item['stream'], size=12, color="grey"),
+                    ft.ElevatedButton("Apply", height=30, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
                                       data=item['link'], on_click=handle_click)
                 ], alignment="spaceBetween")
             ]),
             padding=15, margin=ft.margin.only(bottom=10), bgcolor="#252525", border_radius=15
         )
 
-    # --- 4. DASHBOARD BUILDER ---
-    def load_dashboard():
-        # DO NOT use page.clean() immediately, or we lose the debug info if it crashes
-        # Instead, we overwrite the content
-        
-        current_tab_index = [0]
-        content_area = ft.Column(expand=True, scroll="auto", spacing=10)
-
-        # Content Builder
-        def update_list_view(search_query=""):
-            content_area.controls.clear()
-            
-            # Debug info at top (Temporary)
-            # content_area.controls.append(debug_text) 
-
-            idx = current_tab_index[0]
-            query = search_query.lower()
-            def match(text): return query in text.lower()
-
-            # TAB 0: BOOKS
-            if idx == 0:
-                keys = ["books_class_10", "books_class_9", "books_class_8"]
-                found = False
-                for k in keys:
-                    if k in database:
-                        found = True
-                        filtered = [x for x in database[k] if match(x['title'])]
-                        if filtered:
-                            content_area.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), size=12, weight="bold", color="orange"))
-                            for x in filtered: content_area.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
-                if not found: content_area.controls.append(ft.Text("Database empty or not loaded.", color="red"))
-
-            # TAB 1: PAPERS
-            elif idx == 1:
-                keys = ["papers_2024", "papers_2023", "papers_2022"]
-                for k in keys:
-                    if k in database:
-                        filtered = [x for x in database[k] if match(x['title'])]
-                        if filtered:
-                            content_area.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), size=12, weight="bold", color="cyan"))
-                            for x in filtered: content_area.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
-
-            # TAB 2: SYLLABUS
-            elif idx == 2:
-                if "syllabus_2025" in database:
-                    filtered = [x for x in database["syllabus_2025"] if match(x['title'])]
-                    if filtered:
-                        content_area.controls.append(ft.Text("OFFICIAL SYLLABUS", size=12, weight="bold", color="purple"))
-                        for x in filtered: content_area.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
-
-            # TAB 3: COLLEGES
-            elif idx == 3:
-                if "colleges" in database:
-                    filtered = [x for x in database["colleges"] if match(x['name']) or match(x['stream'])]
-                    if filtered:
-                        content_area.controls.append(ft.Text("SEARCH RESULTS", size=12, weight="bold", color="green"))
-                        for x in filtered: content_area.controls.append(create_college_card(x))
-
-            page.update()
-
-        def on_search(e): update_list_view(e.control.value)
-        def on_nav_change(e):
-            current_tab_index[0] = e.control.selected_index
-            update_list_view("")
-
-        search_field = ft.TextField(
-            prefix_icon=ft.icons.SEARCH,
-            hint_text="Search resources...",
-            text_size=12, height=40, border_radius=20, bgcolor="#222", border_width=0,
-            on_change=on_search
-        )
-
-        app_bar = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Icon(ft.icons.SHIELD, color="cyan", size=30),
-                    ft.Text("WB NEXUS", size=22, weight="bold")
-                ]),
-                search_field
-            ]),
-            padding=ft.padding.only(left=20, right=20, top=40, bottom=10),
-            bgcolor="#111"
-        )
-
-        nav = ft.NavigationBar(
-            selected_index=0,
-            on_change=on_nav_change,
-            bgcolor="#111",
-            destinations=[
-                ft.NavigationBarDestination(icon=ft.icons.BOOK, label="Books"),
-                ft.NavigationBarDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
-                ft.NavigationBarDestination(icon=ft.icons.LIST, label="Syllabus"),
-                ft.NavigationBarDestination(icon=ft.icons.SCHOOL, label="Colleges"),
-            ]
-        )
-
-        page.clean()
-        page.add(app_bar, ft.Container(content=content_area, expand=True, padding=20), nav)
-        update_list_view("")
-
-    # --- 5. SPLASH SCREEN (Simplified) ---
-    # We removed the opacity animation because sometimes it causes black screen on low-end phones
-    # We just show logo -> wait -> load
-    
-    logo_icon = ft.Icon(name=ft.icons.SHIELD_MOON, size=80, color="cyan")
-    logo_text = ft.Text("WB NEXUS", size=30, weight="bold")
+    # 4. SPLASH SCREEN (THE SAFE WAY)
+    logo = ft.Icon(name=ft.icons.SHIELD_MOON, size=0, color="cyan")
+    txt = ft.Text("WB NEXUS", size=0, weight="bold", opacity=0)
     
     splash = ft.Container(
-        content=ft.Column([logo_icon, logo_text, debug_text], 
-                        alignment="center", horizontal_alignment="center", spacing=10),
-        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
+        content=ft.Column([logo, txt], alignment="center", horizontal_alignment="center"),
+        alignment=ft.alignment.center, expand=True, bgcolor="#000000"
     )
-
+    
     page.add(splash)
     
-    # Wait a bit then load dashboard if no critical error
-    # We use a thread so the UI doesn't freeze
-    def transition_to_app():
-        time.sleep(2)
-        # Only load if database worked (or even if it didn't, show empty UI)
-        load_dashboard()
+    # Animate
+    logo.size = 80
+    logo.update()
+    await asyncio.sleep(0.3)
+    txt.size = 30
+    txt.opacity = 1
+    txt.update()
+    await asyncio.sleep(1.5) # Wait for 1.5 seconds
+    
+    # Clear Splash
+    page.clean()
 
-    t = threading.Thread(target=transition_to_app)
-    t.start()
+    # 5. LOAD DASHBOARD
+    content_area = ft.Column(expand=True, scroll="auto", spacing=10)
+    current_tab = [0]
 
+    def update_view():
+        content_area.controls.clear()
+        idx = current_tab[0]
+        
+        # Banner
+        content_area.controls.append(
+            ft.Container(
+                content=ft.Row([ft.Icon(ft.icons.CAMPAIGN, color="black"), ft.Text("News: 2025 Routine Out!", color="black")]),
+                bgcolor="amber", padding=10, border_radius=5, margin=ft.margin.only(bottom=10)
+            )
+        )
+
+        if idx == 0: # Books
+            for k in ["books_class_10", "books_class_9", "books_class_8"]:
+                content_area.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+                for x in DATABASE.get(k, []): content_area.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+
+        elif idx == 1: # Papers
+            for k in ["papers_2024", "papers_2023", "papers_2022"]:
+                content_area.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+                for x in DATABASE.get(k, []): content_area.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+
+        elif idx == 2: # Syllabus
+            content_area.controls.append(ft.Text("SYLLABUS", color="purple", weight="bold"))
+            for x in DATABASE.get("syllabus_2025", []): content_area.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+
+        elif idx == 3: # Colleges
+            content_area.controls.append(ft.Text("SEAT TRACKER", color="green", weight="bold"))
+            for x in DATABASE.get("colleges", []): content_area.controls.append(create_college_card(x))
+
+        page.update()
+
+    def on_nav_change(e):
+        current_tab[0] = e.control.selected_index
+        update_view()
+
+    # App Bar
+    app_bar = ft.Container(
+        content=ft.Row([ft.Icon(ft.icons.SHIELD, color="cyan"), ft.Text("WB NEXUS", size=20, weight="bold")]),
+        padding=ft.padding.only(top=40, left=20, bottom=10), bgcolor="#111"
+    )
+
+    # Nav Bar
+    nav = ft.NavigationBar(
+        selected_index=0,
+        on_change=on_nav_change,
+        bgcolor="#111",
+        destinations=[
+            ft.NavigationBarDestination(icon=ft.icons.BOOK, label="Books"),
+            ft.NavigationBarDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
+            ft.NavigationBarDestination(icon=ft.icons.LIST, label="Syllabus"),
+            ft.NavigationBarDestination(icon=ft.icons.SCHOOL, label="Colleges"),
+        ]
+    )
+
+    page.add(app_bar, ft.Container(content=content_area, expand=True, padding=10), nav)
+    update_view()
+
+# Use asyncio to run the app
 if __name__ == "__main__":
     ft.app(target=main)
