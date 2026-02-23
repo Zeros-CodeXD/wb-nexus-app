@@ -1,40 +1,38 @@
-name: Build Android APK
-
+name: Build Flet APK
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: macos-latest  # THIS IS THE CRITICAL FIX
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install Flet
-      run: pip install flet
+      - name: Install Flet
+        run: |
+          pip install flet
+          pip install -r requirements.txt
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.19.0'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
 
-    - name: Build APK
-      run: |
-        # The 'yes' command repeatedly types 'y' into the terminal
-        # This answers the "Do you want to install Flutter?" question automatically
-        yes | flet build apk --verbose
+      - name: Build APK
+        run: |
+          # If your file is named main.py, keep it as is.
+          flet build apk main.py
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: wb-nexus-release
-        # The path usually ends up here after build
-        path: build/apk/app-release.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/apk/*.apk
