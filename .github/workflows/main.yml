@@ -29,12 +29,11 @@ jobs:
 
       - name: Build APK
         run: |
-          # --product sets the name that appears under the app icon on the phone
-          yes | flet build apk main.py --product "WB-NEXUS"
+          # We use ./main.py to tell Flet exactly where the file is
+          yes | flet build apk ./main.py --product "WB-NEXUS"
 
       - name: Rename APK file
         run: |
-          # This renames the actual file before uploading
           mv build/apk/*.apk build/apk/WB-NEXUS.apk
 
       - name: Upload APK
