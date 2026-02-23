@@ -12,26 +12,25 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Flet
+        run: |
+          pip install flet --upgrade
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.27.0'
-
-      - name: Install Dependencies
-        run: |
-          pip install flet --upgrade
-          # Ensure flet-cli is ready
-          flet --version
+          # Updated version to prevent Flet from asking to upgrade
+          flutter-version: '3.27.3' 
 
       - name: Build APK
         run: |
-          # We don't use --assets anymore. Flet looks for an 'assets' folder by default.
-          # If your folder is named 'assets', it will be included automatically.
-          flet build apk main.py --product "WB-NEXUS"
+          # 1. We use --no-interactive to stop it from asking [y/n] questions
+          # 2. Flet 0.80.x uses the assets folder automatically
+          flet build apk main.py --product "WB-NEXUS" --no-interactive
 
-      - name: Upload Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: WB-NEXUS-Final
+          name: WB-NEXUS-Final-APK
           path: "**/build/apk/*.apk"
