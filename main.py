@@ -1,40 +1,41 @@
 import flet as ft
 
-# Data is inside the script so the app doesn't crash looking for files
-DATABASE = {
-    "books_class_8": [
-        {"title": "Class 8 Science", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view?usp=sharing"},
-        {"title": "Class 8 Mathematics", "link": "https://wbbse.wb.gov.in"},
-    ],
-    # ... (Keep all your other data here)
-}
-
 def main(page: ft.Page):
+    # This ensures the app doesn't hang waiting for resources
     page.title = "WB-NEXUS"
     page.theme_mode = ft.ThemeMode.DARK
     page.scroll = "auto"
     
+    # Simple check to see if the app is alive
+    page.add(
+        ft.Container(
+            content=ft.Text("WB-NEXUS Loaded Successfully!", size=20, color="green"),
+            alignment=ft.alignment.center,
+            padding=20
+        )
+    )
+
     def open_link(e):
         page.launch_url(e.control.data)
 
-    # Simplified UI to ensure it loads fast
-    lv = ft.ListView(expand=1, spacing=10, padding=20)
-    
+    # Hardcoded data to avoid JSON loading crashes
+    DATABASE = {
+        "Books": [
+            {"title": "Class 10 Science", "link": "https://wbbse.wb.gov.in"},
+        ]
+    }
+
     for section, items in DATABASE.items():
-        lv.controls.append(ft.Text(section.replace("_", " ").upper(), size=20, weight="bold", color="orange"))
+        page.add(ft.Text(section, size=24, weight="bold"))
         for item in items:
-            lv.controls.append(
+            page.add(
                 ft.ListTile(
-                    leading=ft.Icon(ft.icons.BOOK),
                     title=ft.Text(item["title"]),
-                    subtitle=ft.Text("Tap to open link"),
                     on_click=open_link,
-                    data=item["link"],
+                    data=item["link"]
                 )
             )
-    
-    page.add(lv)
 
-# CRITICAL: This is what prevents the black screen
 if __name__ == "__main__":
-    ft.app(target=main)
+    # The 'assets_dir' parameter is safer to define here
+    ft.app(target=main, assets_dir="assets")
