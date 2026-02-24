@@ -26,11 +26,10 @@ jobs:
 
       - name: Build APK
         run: |
-          # Flet 0.80.5+ uses the '--yes' flag to skip all prompts.
-          # We point to '.' (the current directory) to find main.py.
-          # Assets are included automatically if the folder is named 'assets'.
-          flet build apk --project wb_nexus --product "WB-NEXUS" --yes .
-
+          # We remove the '.' and use the --yes flag.
+          # We specify the product name and project name clearly.
+          flet build apk --project wb_nexus --product "WB-NEXUS" --yes
+          
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
