@@ -26,10 +26,10 @@ jobs:
 
       - name: Build APK
         run: |
-          # We use printf to pipe 'y' for any prompts.
-          # The script 'main.py' comes AFTER the subcommand 'apk'.
-          # The flags --project, --product, and --assets follow.
-          printf 'y\n' | flet build apk main.py --project wb_nexus --product "WB-NEXUS" --assets assets
+          # Flet 0.80.5+ uses the '--yes' flag to skip all prompts.
+          # We point to '.' (the current directory) to find main.py.
+          # Assets are included automatically if the folder is named 'assets'.
+          flet build apk --project wb_nexus --product "WB-NEXUS" --yes .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
