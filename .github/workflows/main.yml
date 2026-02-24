@@ -5,8 +5,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -20,16 +19,14 @@ jobs:
           flutter-version: '3.27.0'
 
       - name: Install Flet
-        run: |
-          pip install --upgrade pip
-          pip install flet
+        run: pip install flet
 
       - name: Build APK
         run: |
-          # We remove the '.' and use the --yes flag.
-          # We specify the product name and project name clearly.
+          # The --yes flag handles all prompts. 
+          # Flet 0.80.5+ automatically finds main.py in the root.
           flet build apk --project wb_nexus --product "WB-NEXUS" --yes
-          
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
