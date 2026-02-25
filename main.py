@@ -1,8 +1,7 @@
 import flet as ft
-import asyncio
-import traceback
+import webbrowser
 
-# --- 1. THE FULL EMBEDDED DATABASE (Safe & Crash-Proof) ---
+# --- 1. FULL DATABASE (EMBEDDED) ---
 DATABASE = {
   "books_class_8": [
     {"title": "Class 8 Science (Poribesh O Bigyan)", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view?usp=sharing"},
@@ -62,162 +61,129 @@ DATABASE = {
   ]
 }
 
-# --- USE ASYNC MAIN TO PREVENT UI FREEZE ---
-async def main(page: ft.Page):
-    # CRASH PROTECTION START
-    try:
-        # 1. CONFIGURATION
-        page.title = "WB Nexus"
-        page.theme_mode = ft.ThemeMode.DARK
-        page.padding = 0
-        page.spacing = 0
-        page.window_width = 400
-        page.window_height = 800
-        page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
+def main(page: ft.Page):
+    # --- 1. CONFIGURATION ---
+    page.title = "WB Nexus"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 0
+    page.spacing = 0
+    # Material 3 is safer; using seed color
+    page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-        # 2. LINK HANDLER (Android Compatible)
-        def handle_link(e):
-            url = e.control.data
-            if url:
-                print(f"Opening: {url}")
-                page.launch_url(url)
+    # --- 2. LINK HANDLER ---
+    def handle_link(e):
+        url = e.control.data
+        if url:
+            page.launch_url(url)
 
-        # 3. UI COMPONENTS
-        def create_card(title, link, icon_name, color):
-            return ft.Container(
-                content=ft.Row([
-                    ft.Container(
-                        content=ft.Icon(icon_name, color=color, size=24),
-                        padding=10, bgcolor=ft.colors.with_opacity(0.1, color), border_radius=10
-                    ),
-                    ft.Column([
-                        ft.Text(title, size=14, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, color="white"),
-                        ft.Text("Tap to Open", size=11, color="grey"),
-                    ], expand=True, spacing=2),
-                    ft.IconButton(ft.icons.OPEN_IN_NEW, icon_color=color, data=link, on_click=handle_link)
-                ], alignment="spaceBetween"),
-                padding=10, margin=ft.margin.only(bottom=5),
-                bgcolor="#1f1f1f", border_radius=12,
-                on_click=handle_link, data=link # Tapping anywhere works
-            )
+    # --- 3. UI BUILDERS ---
+    def create_card(title, link, icon_name, color):
+        return ft.Container(
+            content=ft.Row([
+                ft.Icon(icon_name, color=color, size=24),
+                ft.Column([
+                    ft.Text(title, size=14, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, color="white"),
+                    ft.Text("Tap to Download", size=11, color="grey"),
+                ], expand=True, spacing=2),
+                ft.IconButton(ft.icons.DOWNLOAD, icon_color=color, data=link, on_click=handle_link)
+            ], alignment="spaceBetween"),
+            padding=10, margin=ft.margin.only(bottom=5),
+            bgcolor="#1f1f1f", border_radius=12,
+            on_click=handle_link, data=link
+        )
 
-        def create_college_card(item):
-            status_col = "green" if item['seats'] > 0 else "red"
-            status_text = f"{item['seats']} LEFT" if item['seats'] > 0 else "FULL"
-            return ft.Container(
-                content=ft.Column([
-                    ft.Row([
-                        ft.Text(item['name'], size=16, weight="bold", expand=True),
-                        ft.Container(content=ft.Text(status_text, size=10, weight="bold", color="black"), 
-                                     bgcolor=status_col, padding=5, border_radius=5)
-                    ]),
-                    ft.Divider(height=10, color="grey"),
-                    ft.Row([
-                        ft.Text(f"Stream: {item['stream']}", size=11, color="grey"),
-                        ft.ElevatedButton("Apply", height=30, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
-                                          data=item['link'], on_click=handle_link)
-                    ], alignment="spaceBetween")
+    def create_college_card(item):
+        status_col = "green" if item['seats'] > 0 else "red"
+        status_text = f"{item['seats']} LEFT" if item['seats'] > 0 else "FULL"
+        return ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Text(item['name'], size=16, weight="bold", expand=True),
+                    ft.Container(content=ft.Text(status_text, size=10, weight="bold", color="black"), 
+                                 bgcolor=status_col, padding=5, border_radius=5)
                 ]),
-                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#252525", border_radius=15
-            )
-
-        # 4. CONTENT BUILDERS
-        def build_tab_content(tab_index):
-            content = ft.Column(expand=True, scroll="auto", spacing=10, padding=15)
-            
-            # Notification Banner
-            content.controls.append(
-                ft.Container(
-                    content=ft.Row([ft.Icon(ft.icons.CAMPAIGN, color="black"), ft.Text("News: 2025 Routine Released!", color="black", weight="bold")]),
-                    bgcolor="amber", padding=10, border_radius=8, margin=ft.margin.only(bottom=10)
-                )
-            )
-
-            if tab_index == 0: # BOOKS
-                for k in ["books_class_10", "books_class_9", "books_class_8"]:
-                    content.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-                    for x in DATABASE[k]: content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
-
-            elif tab_index == 1: # PAPERS
-                for k in ["papers_2024", "papers_2023", "papers_2022"]:
-                    content.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-                    for x in DATABASE[k]: content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
-
-            elif tab_index == 2: # SYLLABUS
-                content.controls.append(ft.Text("OFFICIAL SYLLABUS", color="purple", weight="bold"))
-                for x in DATABASE["syllabus_2025"]: content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
-
-            elif tab_index == 3: # COLLEGES
-                content.controls.append(ft.Text("SEAT AVAILABILITY", color="green", weight="bold"))
-                for x in DATABASE["colleges"]: content.controls.append(create_college_card(x))
-
-            return content
-
-        # 5. SPLASH SCREEN SEQUENCE
-        logo_icon = ft.Icon(name=ft.icons.SHIELD_MOON, size=0, color="cyan")
-        logo_text = ft.Text("WB NEXUS", size=0, weight="bold", opacity=0)
-        
-        splash = ft.Container(
-            content=ft.Column([logo_icon, logo_text], alignment="center", horizontal_alignment="center"),
-            alignment=ft.alignment.center, expand=True, bgcolor="#000000"
-        )
-        
-        page.add(splash)
-        
-        # Safe Animation (Async)
-        logo_icon.size = 80
-        logo_icon.update()
-        await asyncio.sleep(0.3)
-        logo_text.size = 30
-        logo_text.opacity = 1
-        logo_text.update()
-        await asyncio.sleep(1.5)
-        
-        # 6. LOAD MAIN APP
-        page.clean()
-        
-        # Navigation Logic
-        body_container = ft.Container(expand=True) # Holds current tab content
-
-        def on_nav_change(e):
-            idx = e.control.selected_index
-            body_container.content = build_tab_content(idx)
-            body_container.update()
-
-        nav_bar = ft.NavigationBar(
-            selected_index=0,
-            on_change=on_nav_change,
-            bgcolor="#111",
-            destinations=[
-                ft.NavigationBarDestination(icon=ft.icons.BOOK, label="Books"),
-                ft.NavigationBarDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
-                ft.NavigationBarDestination(icon=ft.icons.LIST, label="Syllabus"),
-                ft.NavigationBarDestination(icon=ft.icons.SCHOOL, label="Colleges"),
-            ]
+                ft.Divider(height=10, color="grey"),
+                ft.Row([
+                    ft.Text(f"Stream: {item['stream']}", size=11, color="grey"),
+                    ft.ElevatedButton("Apply", height=30, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
+                                      data=item['link'], on_click=handle_link)
+                ], alignment="spaceBetween")
+            ]),
+            padding=15, margin=ft.margin.only(bottom=10), bgcolor="#252525", border_radius=15
         )
 
-        app_header = ft.Container(
-            content=ft.Row([ft.Icon(ft.icons.SHIELD, color="cyan"), ft.Text("WB NEXUS", size=20, weight="bold")]),
-            padding=ft.padding.only(top=40, left=20, bottom=10), bgcolor="#111"
-        )
+    # --- 4. VIEW LOGIC ---
+    # We define the content for each tab pre-calculated to avoid lag
+    
+    # -- BOOKS --
+    books_view = ft.Column(scroll="auto", spacing=10, padding=15)
+    for k in ["books_class_10", "books_class_9", "books_class_8"]:
+        books_view.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+        for x in DATABASE[k]: books_view.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-        # Initialize with Tab 0
-        body_container.content = build_tab_content(0)
-        
-        page.add(app_header, body_container, nav_bar)
+    # -- PAPERS --
+    papers_view = ft.Column(scroll="auto", spacing=10, padding=15)
+    for k in ["papers_2024", "papers_2023", "papers_2022"]:
+        papers_view.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+        for x in DATABASE[k]: papers_view.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-    # ERROR CATCHER (If app crashes, show why)
-    except Exception as e:
-        error_msg = traceback.format_exc()
-        page.clean()
-        page.add(
-            ft.Column([
-                ft.Icon(ft.icons.ERROR, color="red", size=50),
-                ft.Text("CRITICAL ERROR", color="red", size=20),
-                ft.Text(str(e), color="white"),
-                ft.Text(error_msg, color="grey", size=10)
-            ], scroll="auto")
-        )
+    # -- SYLLABUS --
+    syllabus_view = ft.Column(scroll="auto", spacing=10, padding=15)
+    syllabus_view.controls.append(ft.Text("OFFICIAL SYLLABUS", color="purple", weight="bold"))
+    for x in DATABASE["syllabus_2025"]: syllabus_view.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+
+    # -- COLLEGES --
+    colleges_view = ft.Column(scroll="auto", spacing=10, padding=15)
+    colleges_view.controls.append(ft.Text("SEAT AVAILABILITY", color="green", weight="bold"))
+    for x in DATABASE["colleges"]: colleges_view.controls.append(create_college_card(x))
+
+    # --- 5. MAIN STRUCTURE ---
+    
+    # Notification Banner (Always at top of body)
+    banner = ft.Container(
+        content=ft.Row([ft.Icon(ft.icons.CAMPAIGN, color="black"), ft.Text("News: 2025 Routine Released!", color="black", weight="bold")]),
+        bgcolor="amber", padding=10, border_radius=8, margin=ft.margin.all(15)
+    )
+
+    # Body Container (Swaps content)
+    body = ft.Container(content=books_view, expand=True)
+
+    def nav_change(e):
+        idx = e.control.selected_index
+        if idx == 0: body.content = books_view
+        elif idx == 1: body.content = papers_view
+        elif idx == 2: body.content = syllabus_view
+        elif idx == 3: body.content = colleges_view
+        page.update()
+
+    # Nav Bar
+    nav = ft.NavigationBar(
+        selected_index=0,
+        on_change=nav_change,
+        bgcolor="#111",
+        destinations=[
+            ft.NavigationBarDestination(icon=ft.icons.BOOK, label="Books"),
+            ft.NavigationBarDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
+            ft.NavigationBarDestination(icon=ft.icons.LIST, label="Syllabus"),
+            ft.NavigationBarDestination(icon=ft.icons.SCHOOL, label="Colleges"),
+        ]
+    )
+
+    # Header
+    header = ft.Container(
+        content=ft.Row([ft.Icon(ft.icons.SHIELD, color="cyan"), ft.Text("WB NEXUS", size=20, weight="bold")]),
+        padding=ft.padding.only(top=40, left=20, bottom=10), bgcolor="#111"
+    )
+
+    # --- 6. ADD TO PAGE ---
+    # We add banner separate from body to keep it visible or part of layout
+    layout = ft.Column([
+        header,
+        banner,
+        body
+    ], expand=True, spacing=0)
+
+    page.add(layout, nav)
 
 if __name__ == "__main__":
     ft.app(target=main)
