@@ -8,27 +8,30 @@ DATABASE = {
     {"title": "Bliss (English)", "link": "https://drive.google.com/file/d/1J8ACc0y2ftQ_wSjEqx-C0sA_d8ZjImkx/view"},
     {"title": "Ganit Prakash (Math)", "link": "https://drive.google.com/file/d/11TITkwOSGAFYSz015YStiaxUOUExTkfa/view"},
     {"title": "Koni (Rapid Reader)", "link": "https://drive.google.com/file/d/1jJ-YJIkSyYFG7bSt9Ui9RLfZDWApLKDp/view"},
-    {"title": "Physical Science", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
-    {"title": "Life Science", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
-    {"title": "History", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
-    {"title": "Geography", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"}
+    {"title": "Physical Science (Bhouto Bigyan)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Life Science (Jiban Bigyan)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "History (Itihas)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Geography (Bhugol)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"}
   ],
   # --- BOOKS CLASS 9 ---
   "books_class_9": [
     {"title": "Sahitya Sanchayan (Class 9)", "link": "https://drive.google.com/file/d/1W1iXt6ba7cKGXK06wU0PdDAP9yq_BNdI/view"},
     {"title": "Bliss (Class 9 English)", "link": "https://drive.google.com/file/d/1MJfjJt_9UrG04iMAanWz2izBx_RaBsgc/view"},
     {"title": "Ganit Prakash (Class 9)", "link": "https://drive.google.com/file/d/1bLVwDsYfENQPta5O6w6DQMOvFURorsJj/view"},
-    {"title": "Aam Aatir Bhepu", "link": "https://drive.google.com/file/d/1LdJle7dtqQnfdds_0ENfj3a6KmWACqu-/view"}
+    {"title": "Aam Aatir Bhepu (Rapid)", "link": "https://drive.google.com/file/d/1LdJle7dtqQnfdds_0ENfj3a6KmWACqu-/view"},
+    {"title": "Physical Science", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Life Science", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"}
   ],
   # --- BOOKS CLASS 8 ---
   "books_class_8": [
-    {"title": "Poribesh O Bigyan", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view"},
-    {"title": "Blossoms", "link": "https://drive.google.com/file/d/1ETK2c1uJ802-hOiy0AsYHcmt8imEv_Fw/view"},
-    {"title": "Sahitya Mela", "link": "https://drive.google.com/file/d/197KM-v4IG5Zq7SwebNJ1kXv4OuSCwVDF/view"},
-    {"title": "Bhasha Charcha", "link": "https://drive.google.com/file/d/1oVPMJrl6iYGF_tYeIzCYpwRBpxd9vLg3/view"},
-    {"title": "Pather Panchali", "link": "https://drive.google.com/file/d/1q_cJl8L5XLc96NZA2Cm5x9P_D52jIwNj/view"},
-    {"title": "Atit O Aitihya", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
-    {"title": "Amader Prithibi", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"}
+    {"title": "Sahitya Mela (Bengali)", "link": "https://drive.google.com/file/d/197KM-v4IG5Zq7SwebNJ1kXv4OuSCwVDF/view"},
+    {"title": "Blossoms (English)", "link": "https://drive.google.com/file/d/1ETK2c1uJ802-hOiy0AsYHcmt8imEv_Fw/view"},
+    {"title": "Ganit Prabha (Math)", "link": "https://drive.google.com/file/d/YOUR_LINK"},
+    {"title": "Poribesh O Bigyan (Science)", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view"},
+    {"title": "Pather Panchali (Rapid)", "link": "https://drive.google.com/file/d/1q_cJl8L5XLc96NZA2Cm5x9P_D52jIwNj/view"},
+    {"title": "Atit O Aitihya (History)", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
+    {"title": "Amader Prithibi (Geo)", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"},
+    {"title": "Bhasha Charcha (Grammar)", "link": "https://drive.google.com/file/d/1oVPMJrl6iYGF_tYeIzCYpwRBpxd9vLg3/view"}
   ],
   
   # --- PAPERS ---
@@ -64,7 +67,8 @@ DATABASE = {
     {"name": "Jadavpur University", "dept": "Physics Hons", "seats": 8, "cutoff": "94%", "link": "https://jadavpuruniversity.in/"},
     {"name": "Calcutta University", "dept": "B.Tech", "seats": 25, "cutoff": "90%", "link": "https://www.caluniv.ac.in/"},
     {"name": "Presidency Univ", "dept": "Economics", "seats": 0, "cutoff": "CLOSED", "link": "https://presiuniv.ac.in/"},
-    {"name": "St. Xavier's College", "dept": "B.Com", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
+    {"name": "St. Xavier's College", "dept": "B.Com (Morning)", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
+    {"name": "St. Xavier's College", "dept": "Microbiology", "seats": 5, "cutoff": "95%", "link": "https://www.sxccal.edu/"},
     {"name": "Scottish Church", "dept": "Chemistry", "seats": 15, "cutoff": "88%", "link": "https://www.scottishchurch.ac.in/"},
     {"name": "Heritage Institute", "dept": "CSE", "seats": 40, "cutoff": "WBJEE", "link": "https://www.heritageit.edu/"},
     {"name": "Techno India", "dept": "ECE", "seats": 60, "cutoff": "Direct", "link": "https://www.technoindiauniversity.ac.in/"},
@@ -78,7 +82,8 @@ DATABASE = {
   "syllabus_2025": [
     {"title": "Madhyamik 2025 Syllabus", "link": "https://wbbse.wb.gov.in"},
     {"title": "HS 2025 Science Syllabus", "link": "https://wbchse.nic.in"},
-    {"title": "HS 2025 Arts Syllabus", "link": "https://wbchse.nic.in"}
+    {"title": "HS 2025 Arts Syllabus", "link": "https://wbchse.nic.in"},
+    {"title": "HS 2025 Commerce Syllabus", "link": "https://wbchse.nic.in"}
   ]
 }
 
@@ -90,9 +95,8 @@ def main(page: ft.Page):
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # --- 2. THE APP LOADER (RUNS ONLY ON CLICK) ---
+    # --- 2. THE APP LOGIC (RUNS ON CLICK) ---
     def launch_app(e):
-        # Clear the "Click to Start" screen
         page.clean()
         
         # Link Handler
@@ -138,38 +142,40 @@ def main(page: ft.Page):
                 padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15, border=ft.border.all(1, "#333")
             )
 
-        # Prepare Views
-        books_col = ft.Column(scroll="auto", padding=15)
+        # --- OPTIMIZED LISTVIEWS ---
+        # Using ListView allows items to load only when scrolled into view
+        
+        books_list = ft.ListView(expand=True, padding=10, spacing=5)
         for k in ["books_class_10", "books_class_9", "books_class_8"]:
             if k in DATABASE:
-                books_col.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-                for x in DATABASE[k]: books_col.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+                books_list.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+                for x in DATABASE[k]: books_list.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-        papers_col = ft.Column(scroll="auto", padding=15)
+        papers_list = ft.ListView(expand=True, padding=10, spacing=5)
         for k in ["papers_2024", "papers_2023", "papers_2022"]:
             if k in DATABASE:
-                papers_col.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-                for x in DATABASE[k]: papers_col.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+                papers_list.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+                for x in DATABASE[k]: papers_list.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-        college_col = ft.Column(scroll="auto", padding=15)
-        college_col.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
-        if "colleges" in DATABASE:
-            for x in DATABASE["colleges"]: college_col.controls.append(create_college_card(x))
-
-        syllabus_col = ft.Column(scroll="auto", padding=15)
-        syllabus_col.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
+        syllabus_list = ft.ListView(expand=True, padding=10, spacing=5)
+        syllabus_list.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
         if "syllabus_2025" in DATABASE:
-            for x in DATABASE["syllabus_2025"]: syllabus_col.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+            for x in DATABASE["syllabus_2025"]: syllabus_list.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-        # Build Layout
-        body = ft.Container(content=books_col, expand=True)
+        college_list = ft.ListView(expand=True, padding=10, spacing=5)
+        college_list.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
+        if "colleges" in DATABASE:
+            for x in DATABASE["colleges"]: college_list.controls.append(create_college_card(x))
+
+        # --- LAYOUT ---
+        body = ft.Container(content=books_list, expand=True)
 
         def on_nav(e):
             idx = e.control.selected_index
-            if idx == 0: body.content = books_col
-            elif idx == 1: body.content = papers_col
-            elif idx == 2: body.content = syllabus_col
-            elif idx == 3: body.content = college_col
+            if idx == 0: body.content = books_list
+            elif idx == 1: body.content = papers_list
+            elif idx == 2: body.content = syllabus_list
+            elif idx == 3: body.content = college_list
             page.update()
 
         nav_bar = ft.NavigationBar(
