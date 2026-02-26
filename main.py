@@ -1,5 +1,5 @@
 import flet as ft
-import time
+import threading
 
 # --- 1. THE COMPLETE MASTER DATABASE (EMBEDDED) ---
 DATABASE = {
@@ -95,132 +95,75 @@ DATABASE = {
 }
 
 def main(page: ft.Page):
-    # --- 1. CONFIGURATION ---
+    # 1. CONFIG
     page.title = "WB Nexus"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # --- 2. SHOW SPLASH SCREEN (CRASH PREVENTION) ---
-    splash = ft.Container(
-        content=ft.Column([
-            ft.Icon(name=ft.icons.SHIELD_MOON, size=80, color="cyan"),
-            ft.Container(height=20),
-            ft.Text("WB NEXUS", size=30, weight="bold", color="white"),
-            ft.Text("Loading Database...", color="grey"),
-            ft.Container(height=20),
-            ft.ProgressRing(color="cyan")
-        ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center,
-        expand=True,
-        bgcolor="#0a0a0a"
-    )
-    
-    page.add(splash)
-    page.update()
-    
-    # WAIT 3 SECONDS FOR ANDROID TO WAKE UP
-    time.sleep(3)
-
-    # --- 3. LINK HANDLER ---
+    # 2. LINK HANDLER
     def handle_link(e):
-        url = e.control.data
-        if url:
-            page.launch_url(url)
+        if e.control.data: page.launch_url(e.control.data)
 
-    # --- 4. UI BUILDERS ---
+    # 3. BUILDERS
     def create_card(title, link, icon, color):
         return ft.Container(
             content=ft.Row([
-                ft.Container(
-                    content=ft.Icon(icon, color=color, size=24),
-                    padding=10, 
-                    bgcolor=ft.colors.with_opacity(0.1, color), 
-                    border_radius=10
-                ),
+                ft.Icon(icon, color=color, size=24),
                 ft.Column([
                     ft.Text(title, weight="bold", size=14, color="white", width=200, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                    ft.Text("Tap to Download", size=11, color="grey"),
+                    ft.Text("Official PDF", size=11, color="grey"),
                 ], expand=True, spacing=2),
-                ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, data=link, on_click=handle_link)
+                ft.IconButton(ft.icons.DOWNLOAD, icon_color=color, data=link, on_click=handle_link)
             ], alignment="spaceBetween"),
             bgcolor="#1f1f1f", padding=10, border_radius=12, margin=ft.margin.only(bottom=8),
             on_click=handle_link, data=link
         )
 
     def create_college_card(item):
-        seats = item['seats']
-        if seats == 0:
-            status_col, status_text = "red", "CLOSED"
-        elif seats < 10:
-            status_col, status_text = "orange", f"FAST: {seats} LEFT"
-        else:
-            status_col, status_text = "green", f"OPEN: {seats} SEATS"
-
+        col = "green" if item.get('seats', 0) > 0 else "red"
         return ft.Container(
             content=ft.Column([
                 ft.Row([
-                    ft.Column([
-                        ft.Text(item['name'], weight="bold", size=16),
-                        ft.Text(item['dept'], size=12, color="cyan", weight="bold")
-                    ], expand=True),
-                    ft.Container(
-                        content=ft.Text(status_text, size=10, weight="bold", color="black"), 
-                        bgcolor=status_col, padding=5, border_radius=5
-                    )
-                ]),
-                ft.Divider(height=10, color="#333"),
-                ft.Row([
-                    ft.Text(f"Cutoff: {item['cutoff']}", size=12, color="grey"),
-                    ft.ElevatedButton("Official Site", height=30, 
-                                      style=ft.ButtonStyle(bgcolor="#222", color="white", side=ft.BorderSide(1, "cyan")), 
-                                      data=item['link'], on_click=handle_link)
-                ], alignment="spaceBetween")
+                    ft.Text(item['name'], weight="bold", size=16),
+                    ft.Container(content=ft.Text(f"{item.get('seats',0)} SEATS", color="black", size=10), bgcolor=col, padding=5, border_radius=5)
+                ], alignment="spaceBetween"),
+                ft.ElevatedButton("Apply", height=30, style=ft.ButtonStyle(bgcolor="blue", color="white"), data=item['link'], on_click=handle_link)
             ]),
-            padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15, border=ft.border.all(1, "#333")
+            padding=15, margin=ft.margin.only(bottom=10), bgcolor="#252525", border_radius=15
         )
 
-    # --- 5. BUILD CONTENT ---
+    # 4. PRE-BUILD VIEWS (Background)
+    # We build these BEFORE showing them so there is no lag when clicking tabs
+    views = {}
     
-    # Books View
-    books_col = ft.Column(scroll="auto", padding=15)
-    for k in ["books_class_10", "books_class_9", "books_class_8"]:
-        if k in DATABASE:
-            books_col.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-            for x in DATABASE[k]: books_col.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+    # Books
+    v = ft.Column(scroll="auto", padding=15)
+    if "books_class_10" in DATABASE:
+        for x in DATABASE["books_class_10"]: v.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+    views[0] = v
 
-    # Papers View
-    papers_col = ft.Column(scroll="auto", padding=15)
-    for k in ["papers_2024", "papers_2023", "papers_2022"]:
-        if k in DATABASE:
-            papers_col.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-            for x in DATABASE[k]: papers_col.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+    # Papers (Placeholder if empty)
+    views[1] = ft.Column([ft.Text("Papers coming soon...", color="grey")], padding=20)
 
-    # College View
-    college_col = ft.Column(scroll="auto", padding=15)
-    college_col.controls.append(ft.Container(
-        content=ft.Row([ft.Icon(ft.icons.INFO_OUTLINE, size=15), ft.Text("Live updates from WB Portal", size=12)]),
-        padding=10, bgcolor="#222", border_radius=5, margin=ft.margin.only(bottom=15)
-    ))
-    for x in DATABASE["colleges"]: college_col.controls.append(create_college_card(x))
+    # Syllabus
+    v = ft.Column(scroll="auto", padding=15)
+    if "syllabus_2025" in DATABASE:
+        for x in DATABASE["syllabus_2025"]: v.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+    views[2] = v
 
-    # Syllabus View
-    syllabus_col = ft.Column(scroll="auto", padding=15)
-    syllabus_col.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
-    for x in DATABASE["syllabus_2025"]: syllabus_col.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+    # Colleges
+    v = ft.Column(scroll="auto", padding=15)
+    if "colleges" in DATABASE:
+        for x in DATABASE["colleges"]: v.controls.append(create_college_card(x))
+    views[3] = v
 
-    # --- 6. SWAP TO MAIN UI ---
-    page.clean() # Remove Pre-loader
-
-    body = ft.Container(content=books_col, expand=True)
+    # 5. NAVIGATION LOGIC
+    body = ft.Container(content=views[0], expand=True)
 
     def on_nav(e):
-        idx = e.control.selected_index
-        if idx == 0: body.content = books_col
-        elif idx == 1: body.content = papers_col
-        elif idx == 2: body.content = syllabus_col
-        elif idx == 3: body.content = college_col
+        body.content = views[e.control.selected_index]
         page.update()
 
     nav_bar = ft.NavigationBar(
@@ -230,22 +173,39 @@ def main(page: ft.Page):
         destinations=[
             ft.NavigationDestination(icon=ft.icons.BOOK, label="Books"),
             ft.NavigationDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
-            ft.NavigationDestination(icon=ft.icons.LIST_ALT, label="Syllabus"),
+            ft.NavigationDestination(icon=ft.icons.LIST, label="Syllabus"),
             ft.NavigationDestination(icon=ft.icons.SCHOOL, label="Colleges"),
         ]
     )
 
     header = ft.Container(
-        content=ft.Row([
-            ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
-            ft.Text("WB NEXUS", size=22, weight="bold")
-        ], alignment="center"),
-        padding=ft.padding.only(top=40, bottom=15),
-        bgcolor="#0a0a0a",
-        border=ft.border.only(bottom=ft.border.BorderSide(1, "#222"))
+        content=ft.Row([ft.Icon(ft.icons.SHIELD_MOON, color="cyan"), ft.Text("WB NEXUS", size=22, weight="bold")], alignment="center"),
+        padding=ft.padding.only(top=40, bottom=15), bgcolor="#0a0a0a"
     )
 
-    page.add(header, body, nav_bar)
+    # 6. APP LAUNCHER (THE FIX)
+    def start_app():
+        # Clear Splash
+        page.clean()
+        # Add Real App
+        page.add(header, body, nav_bar)
+        page.update()
+
+    # Show Splash
+    page.add(
+        ft.Container(
+            content=ft.Column([
+                ft.ProgressRing(),
+                ft.Text("Loading...")
+            ], alignment="center", horizontal_alignment="center"),
+            alignment=ft.alignment.center, expand=True
+        )
+    )
+    
+    # Wait 2 seconds in a SEPARATE THREAD, then run start_app
+    # This prevents the UI from freezing
+    timer = threading.Timer(2.0, start_app)
+    timer.start()
 
 if __name__ == "__main__":
     ft.app(target=main)
