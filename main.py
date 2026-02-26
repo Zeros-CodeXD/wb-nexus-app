@@ -1,5 +1,4 @@
 import flet as ft
-import threading
 
 # --- 1. THE COMPLETE MASTER DATABASE (EMBEDDED) ---
 DATABASE = {
@@ -9,10 +8,10 @@ DATABASE = {
     {"title": "Bliss (English)", "link": "https://drive.google.com/file/d/1J8ACc0y2ftQ_wSjEqx-C0sA_d8ZjImkx/view"},
     {"title": "Ganit Prakash (Math)", "link": "https://drive.google.com/file/d/11TITkwOSGAFYSz015YStiaxUOUExTkfa/view"},
     {"title": "Koni (Rapid Reader)", "link": "https://drive.google.com/file/d/1jJ-YJIkSyYFG7bSt9Ui9RLfZDWApLKDp/view"},
-    {"title": "Bhouto Bigyan (Physical Sci)", "link": "https://drive.google.com/file/d/YOUR_LINK"},
-    {"title": "Jiban Bigyan (Life Sci)", "link": "https://drive.google.com/file/d/YOUR_LINK"},
-    {"title": "Itihas (History)", "link": "https://drive.google.com/file/d/YOUR_LINK"},
-    {"title": "Bhugol (Geography)", "link": "https://drive.google.com/file/d/YOUR_LINK"}
+    {"title": "Bhouto Bigyan (Physical Sci)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Jiban Bigyan (Life Sci)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Itihas (History)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Bhugol (Geography)", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"}
   ],
   # --- BOOKS CLASS 9 ---
   "books_class_9": [
@@ -20,8 +19,8 @@ DATABASE = {
     {"title": "Bliss (English)", "link": "https://drive.google.com/file/d/1MJfjJt_9UrG04iMAanWz2izBx_RaBsgc/view"},
     {"title": "Ganit Prakash (Math)", "link": "https://drive.google.com/file/d/1bLVwDsYfENQPta5O6w6DQMOvFURorsJj/view"},
     {"title": "Aam Aatir Bhepu (Rapid)", "link": "https://drive.google.com/file/d/1LdJle7dtqQnfdds_0ENfj3a6KmWACqu-/view"},
-    {"title": "Physical Science", "link": "https://drive.google.com/file/d/YOUR_LINK"},
-    {"title": "Life Science", "link": "https://drive.google.com/file/d/YOUR_LINK"}
+    {"title": "Physical Science", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"},
+    {"title": "Life Science", "link": "https://drive.google.com/file/d/YOUR_LINK_HERE"}
   ],
   # --- BOOKS CLASS 8 ---
   "books_class_8": [
@@ -106,64 +105,96 @@ def main(page: ft.Page):
     def handle_link(e):
         if e.control.data: page.launch_url(e.control.data)
 
-    # 3. BUILDERS
+    # 3. UI BUILDERS (Optimized for Android) ---
     def create_card(title, link, icon, color):
         return ft.Container(
             content=ft.Row([
-                ft.Icon(icon, color=color, size=24),
+                ft.Container(
+                    content=ft.Icon(icon, color=color, size=24),
+                    padding=10, 
+                    bgcolor=ft.colors.with_opacity(0.1, color), 
+                    border_radius=10
+                ),
                 ft.Column([
                     ft.Text(title, weight="bold", size=14, color="white", width=200, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                    ft.Text("Official PDF", size=11, color="grey"),
+                    ft.Text("Tap to Download", size=11, color="grey"),
                 ], expand=True, spacing=2),
-                ft.IconButton(ft.icons.DOWNLOAD, icon_color=color, data=link, on_click=handle_link)
+                ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, data=link, on_click=handle_link)
             ], alignment="spaceBetween"),
             bgcolor="#1f1f1f", padding=10, border_radius=12, margin=ft.margin.only(bottom=8),
             on_click=handle_link, data=link
         )
 
     def create_college_card(item):
-        col = "green" if item.get('seats', 0) > 0 else "red"
+        seats = item['seats']
+        if seats == 0:
+            status_col, status_text = "red", "CLOSED"
+        elif seats < 10:
+            status_col, status_text = "orange", f"FAST: {seats} LEFT"
+        else:
+            status_col, status_text = "green", f"OPEN: {seats} SEATS"
+
         return ft.Container(
             content=ft.Column([
                 ft.Row([
-                    ft.Text(item['name'], weight="bold", size=16),
-                    ft.Container(content=ft.Text(f"{item.get('seats',0)} SEATS", color="black", size=10), bgcolor=col, padding=5, border_radius=5)
-                ], alignment="spaceBetween"),
-                ft.ElevatedButton("Apply", height=30, style=ft.ButtonStyle(bgcolor="blue", color="white"), data=item['link'], on_click=handle_link)
+                    ft.Column([
+                        ft.Text(item['name'], weight="bold", size=16),
+                        ft.Text(item['dept'], size=12, color="cyan", weight="bold")
+                    ], expand=True),
+                    ft.Container(
+                        content=ft.Text(status_text, size=10, weight="bold", color="black"), 
+                        bgcolor=status_col, padding=5, border_radius=5
+                    )
+                ]),
+                ft.Divider(height=10, color="#333"),
+                ft.Row([
+                    ft.Text(f"Cutoff: {item['cutoff']}", size=12, color="grey"),
+                    ft.ElevatedButton("Official Site", height=30, 
+                                      style=ft.ButtonStyle(bgcolor="#222", color="white", side=ft.BorderSide(1, "cyan")), 
+                                      data=item['link'], on_click=handle_link)
+                ], alignment="spaceBetween")
             ]),
-            padding=15, margin=ft.margin.only(bottom=10), bgcolor="#252525", border_radius=15
+            padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15, border=ft.border.all(1, "#333")
         )
 
     # 4. PRE-BUILD VIEWS (Background)
-    # We build these BEFORE showing them so there is no lag when clicking tabs
-    views = {}
+    # This happens immediately so no waiting
     
-    # Books
-    v = ft.Column(scroll="auto", padding=15)
-    if "books_class_10" in DATABASE:
-        for x in DATABASE["books_class_10"]: v.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
-    views[0] = v
+    # -- BOOKS CONTENT --
+    books_col = ft.Column(scroll="auto", padding=15)
+    for k in ["books_class_10", "books_class_9", "books_class_8"]:
+        if k in DATABASE:
+            books_col.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+            for x in DATABASE[k]: books_col.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-    # Papers (Placeholder if empty)
-    views[1] = ft.Column([ft.Text("Papers coming soon...", color="grey")], padding=20)
+    # -- PAPERS CONTENT --
+    papers_col = ft.Column(scroll="auto", padding=15)
+    for k in ["papers_2024", "papers_2023", "papers_2022"]:
+        if k in DATABASE:
+            papers_col.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+            for x in DATABASE[k]: papers_col.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-    # Syllabus
-    v = ft.Column(scroll="auto", padding=15)
-    if "syllabus_2025" in DATABASE:
-        for x in DATABASE["syllabus_2025"]: v.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
-    views[2] = v
+    # -- COLLEGE CONTENT --
+    college_col = ft.Column(scroll="auto", padding=15)
+    college_col.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
+    for x in DATABASE["colleges"]: college_col.controls.append(create_college_card(x))
 
-    # Colleges
-    v = ft.Column(scroll="auto", padding=15)
-    if "colleges" in DATABASE:
-        for x in DATABASE["colleges"]: v.controls.append(create_college_card(x))
-    views[3] = v
+    # -- SYLLABUS CONTENT --
+    syllabus_col = ft.Column(scroll="auto", padding=15)
+    syllabus_col.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
+    for x in DATABASE["syllabus_2025"]: syllabus_col.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-    # 5. NAVIGATION LOGIC
-    body = ft.Container(content=views[0], expand=True)
+    # --- 5. MAIN STRUCTURE ---
+    
+    # Body Container (Swaps content)
+    body = ft.Container(content=books_col, expand=True)
 
     def on_nav(e):
-        body.content = views[e.control.selected_index]
+        idx = e.control.selected_index
+        if idx == 0: body.content = books_col
+        elif idx == 1: body.content = papers_col
+        elif idx == 2: body.content = syllabus_col
+        elif idx == 3: body.content = college_col
         page.update()
 
     nav_bar = ft.NavigationBar(
@@ -179,33 +210,29 @@ def main(page: ft.Page):
     )
 
     header = ft.Container(
-        content=ft.Row([ft.Icon(ft.icons.SHIELD_MOON, color="cyan"), ft.Text("WB NEXUS", size=22, weight="bold")], alignment="center"),
-        padding=ft.padding.only(top=40, bottom=15), bgcolor="#0a0a0a"
+        content=ft.Row([
+            ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
+            ft.Text("WB NEXUS", size=22, weight="bold")
+        ], alignment="center"),
+        padding=ft.padding.only(top=40, bottom=15),
+        bgcolor="#0a0a0a",
+        border=ft.border.only(bottom=ft.border.BorderSide(1, "#222"))
     )
 
-    # 6. APP LAUNCHER (THE FIX)
-    def start_app():
-        # Clear Splash
-        page.clean()
-        # Add Real App
-        page.add(header, body, nav_bar)
-        page.update()
-
-    # Show Splash
-    page.add(
-        ft.Container(
-            content=ft.Column([
-                ft.ProgressRing(),
-                ft.Text("Loading...")
-            ], alignment="center", horizontal_alignment="center"),
-            alignment=ft.alignment.center, expand=True
-        )
+    # Notification
+    banner = ft.Container(
+        content=ft.Row([ft.Icon(ft.icons.CAMPAIGN, color="black"), ft.Text("News: 2025 Routine Released!", color="black", weight="bold")]),
+        bgcolor="amber", padding=10, border_radius=8, margin=ft.margin.all(15)
     )
-    
-    # Wait 2 seconds in a SEPARATE THREAD, then run start_app
-    # This prevents the UI from freezing
-    timer = threading.Timer(2.0, start_app)
-    timer.start()
+
+    # 6. DIRECT LAYOUT ASSEMBLY
+    layout = ft.Column([
+        header,
+        banner,
+        body
+    ], expand=True, spacing=0)
+
+    page.add(layout, nav_bar)
 
 if __name__ == "__main__":
     ft.app(target=main)
