@@ -51,9 +51,9 @@ DATABASE = {
     {"title": "2022 Geography", "link": "https://drive.google.com/file/d/19QWjSKary4IXrv9Bwa0oyADDTXmc3dPA/view"}
   ],
   "colleges": [
-    {"name": "Jadavpur Univ", "dept": "CSE / IT", "seats": 12, "cutoff": "98%", "link": "https://jadavpuruniversity.in/"},
-    {"name": "Jadavpur Univ", "dept": "Physics Hons", "seats": 8, "cutoff": "94%", "link": "https://jadavpuruniversity.in/"},
-    {"name": "Calcutta Univ", "dept": "B.Tech", "seats": 25, "cutoff": "90%", "link": "https://www.caluniv.ac.in/"},
+    {"name": "Jadavpur University", "dept": "CSE / IT", "seats": 12, "cutoff": "98%", "link": "https://jadavpuruniversity.in/"},
+    {"name": "Jadavpur University", "dept": "Physics Hons", "seats": 8, "cutoff": "94%", "link": "https://jadavpuruniversity.in/"},
+    {"name": "Calcutta University", "dept": "B.Tech", "seats": 25, "cutoff": "90%", "link": "https://www.caluniv.ac.in/"},
     {"name": "Presidency Univ", "dept": "Economics", "seats": 0, "cutoff": "CLOSED", "link": "https://presiuniv.ac.in/"},
     {"name": "St. Xavier's College", "dept": "B.Com", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
     {"name": "St. Xavier's College", "dept": "Microbiology", "seats": 5, "cutoff": "95%", "link": "https://www.sxccal.edu/"},
@@ -76,7 +76,7 @@ DATABASE = {
 }
 
 def main(page: ft.Page):
-    # 1. CONFIGURATION
+    # --- 1. CONFIG ---
     page.title = "WB-NEXUS"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
@@ -85,17 +85,14 @@ def main(page: ft.Page):
 
     # --- 2. LOGIC ---
     def launch_app(e):
+        # Clear the "Click to Start" screen
         page.clean()
         
-        # State
-        current_search = [""]
-        current_tab = [0]
-        
-        # Utils
+        # UTILS
         def handle_link(e):
             if e.control.data: page.launch_url(e.control.data)
 
-        # --- PRETTY UI BUILDERS (GRADIENTS & SHADOWS) ---
+        # --- UI BUILDERS (Optimized for ListView) ---
         def create_card(title, link, icon, color):
             return ft.Container(
                 content=ft.Row([
@@ -106,8 +103,8 @@ def main(page: ft.Page):
                     ], expand=True, spacing=2),
                     ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, data=link, on_click=handle_link)
                 ], alignment="spaceBetween"),
-                bgcolor="#1a1a1a", padding=10, border_radius=15, margin=ft.margin.only(bottom=8),
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black")),
+                bgcolor="#1f1f1f", padding=10, border_radius=15, margin=ft.margin.only(bottom=8),
+                # IMPORTANT: Removed Shadow for stability on low-end devices
                 on_click=handle_link, data=link
             )
 
@@ -131,78 +128,49 @@ def main(page: ft.Page):
                                           data=item['link'], on_click=handle_link)
                     ], alignment="spaceBetween")
                 ]),
-                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15,
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
+                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15
             )
 
-        # --- DYNAMIC CONTENT LOADER (Search Enabled) ---
-        body_content = ft.Column(scroll="auto", padding=15, expand=True)
+        # --- VIEW LISTS (THE FIX: ListView) ---
+        # Note: We use ListView instead of Column. ListView creates items only when visible.
+        
+        books_list = ft.ListView(expand=True, padding=15, spacing=5)
+        for k in ["books_class_10", "books_class_9", "books_class_8"]:
+            if k in DATABASE:
+                books_list.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+                for x in DATABASE[k]: books_list.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-        def update_view():
-            body_content.controls.clear()
-            idx = current_tab[0]
-            query = current_search[0].lower()
-            def match(text): return query in text.lower()
+        papers_list = ft.ListView(expand=True, padding=15, spacing=5)
+        for k in ["papers_2024", "papers_2023", "papers_2022"]:
+            if k in DATABASE:
+                papers_list.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+                for x in DATABASE[k]: papers_list.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-            if idx == 0: # Books
-                for k in ["books_class_10", "books_class_9", "books_class_8"]:
-                    items = [x for x in DATABASE[k] if match(x['title'])]
-                    if items:
-                        body_content.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-                        for x in items: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+        syllabus_list = ft.ListView(expand=True, padding=15, spacing=5)
+        syllabus_list.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
+        if "syllabus_2025" in DATABASE:
+            for x in DATABASE["syllabus_2025"]: syllabus_list.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-            elif idx == 1: # Papers
-                for k in ["papers_2024", "papers_2023", "papers_2022"]:
-                    items = [x for x in DATABASE[k] if match(x['title'])]
-                    if items:
-                        body_content.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-                        for x in items: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+        college_list = ft.ListView(expand=True, padding=15, spacing=5)
+        college_list.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
+        if "colleges" in DATABASE:
+            for x in DATABASE["colleges"]: college_list.controls.append(create_college_card(x))
 
-            elif idx == 2: # Syllabus
-                body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
-                for x in DATABASE["syllabus_2025"]: 
-                    if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+        # --- LAYOUT ---
+        body = ft.Container(content=books_list, expand=True)
 
-            elif idx == 3: # Colleges
-                body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
-                for x in DATABASE["colleges"]:
-                    if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
-
-            # Empty State
-            if not body_content.controls:
-                body_content.controls.append(ft.Text("No results found.", color="grey", italic=True))
-            
-            page.update()
-
-        # --- UI LAYOUT ---
         def on_nav(e):
-            current_tab[0] = e.control.selected_index
-            update_view()
-
-        def on_search(e):
-            current_search[0] = e.control.value
-            update_view()
-
-        # Premium Header
-        header = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
-                    ft.Text("WB-NEXUS", size=22, weight="bold"),
-                    ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
-                ], alignment="spaceBetween"),
-                ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
-                             border_radius=20, bgcolor="#222", border_width=0, on_change=on_search)
-            ]),
-            padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
-            gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#111", "#1a1a1a"]),
-            border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
-        )
+            idx = e.control.selected_index
+            if idx == 0: body.content = books_list
+            elif idx == 1: body.content = papers_list
+            elif idx == 2: body.content = syllabus_list
+            elif idx == 3: body.content = college_list
+            page.update()
 
         nav_bar = ft.NavigationBar(
             selected_index=0,
             on_change=on_nav,
-            bgcolor="#111",
+            bgcolor="#0a0a0a",
             destinations=[
                 ft.NavigationDestination(icon=ft.icons.BOOK, label="Books"),
                 ft.NavigationDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
@@ -211,15 +179,23 @@ def main(page: ft.Page):
             ]
         )
 
-        # About Dialog
-        info_dialog = ft.AlertDialog(
-            title=ft.Text("About WB-NEXUS"),
-            content=ft.Text("Version 1.0\nDeveloped for WB Students.\n\nFree & Open Source."),
+        # Gradient Header (Premium Look)
+        header = ft.Container(
+            content=ft.Row([
+                ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
+                ft.Text("WB-NEXUS", size=22, weight="bold")
+            ], alignment="spaceBetween"),
+            padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
+            gradient=ft.LinearGradient(
+                begin=ft.alignment.top_center,
+                end=ft.alignment.bottom_center,
+                colors=["#111", "#1a1a1a"]
+            ),
+            border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
         )
 
-        # Assemble
-        update_view() # Initial Load
-        page.add(ft.Column([header, body_content], expand=True, spacing=0), nav_bar)
+        page.add(ft.Column([header, body], expand=True, spacing=0), nav_bar)
+        page.update()
 
     # --- 3. STARTUP SCREEN (SAFE) ---
     start_btn = ft.Container(
