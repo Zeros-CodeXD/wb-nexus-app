@@ -1,38 +1,18 @@
 import flet as ft
-import google.generativeai as genai
+import requests
 import threading
-import time
 
-# --- 1. CONFIGURATION & API ---
-GOOGLE_API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g"
-
-# Initialize AI (Safe Mode)
-ai_model = None
-try:
-    genai.configure(api_key=GOOGLE_API_KEY)
-    ai_model = genai.GenerativeModel(
-        'gemini-1.5-flash',
-        system_instruction=(
-            "You are a strict AI Tutor for West Bengal Board (WBBSE/WBCHSE). "
-            "You help with Studies, Syllabus, and Exam Prep only. "
-            "If asked about non-educational topics (movies, romance, politics, violence), "
-            "politely refuse. Keep answers concise and helpful for students."
-        )
-    )
-except:
-    pass # If offline, app won't crash
-
-# --- 2. THE MASTER DATABASE ---
+# --- 1. THE COMPLETE MASTER DATABASE ---
 DATABASE = {
   # --- NEW: CLASS 11 & 12 (WBCHSE) ---
   "books_hs": [
     {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
-    {"title": "Sahitya Chorcha (Bengali) - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
-    {"title": "Sahitya Chorcha (Bengali) - Class 11", "link": "https://drive.google.com/file/d/1sLUQVNCDE0xF5Myw4it94O8EmoLmfjmc/view?usp=drive_link"},
     {"title": "Bangalir Bhasha O Sanaskriti - Class 11", "link": "https://drive.google.com/file/d/1dUgC4Mck79Wo9a8gXnOJfL_E9LXrP22e/view?usp=drive_link"},
+    {"title": "Sahitya Chorcha - Class 11", "link": "https://drive.google.com/file/d/1sLUQVNCDE0xF5Myw4it94O8EmoLmfjmc/view?usp=drive_link"},
+    {"title": "Sahitya Chorcha - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
+    {"title": "Mediscape (Medical Prep)", "link": "https://drive.google.com/file/d/1Dpo7rvUbMl2OPk6_4Mwg1tI6FVXkYu36/view?usp=drive_link"},
     {"title": "Rhapsody English (A) - Class 11 & 12", "link": "https://drive.google.com/file/d/1qvb5CVobsd3RMHJCqt5HiMoqOYB1fP-t/view?usp=drive_link"},
-    {"title": "Sahitya Katha - Class 11 & 12", "link": "https://drive.google.com/file/d/13oE6xt5pOoIh7rmj9Zdmmj4hWzwnC-Ka/view?usp=drive_link"},
-    {"title": "Mediscape (Medical Prep)", "link": "https://drive.google.com/file/d/1Dpo7rvUbMl2OPk6_4Mwg1tI6FVXkYu36/view?usp=drive_link"}
+    {"title": "Sahitya Katha - Class 11 & 12", "link": "https://drive.google.com/file/d/13oE6xt5pOoIh7rmj9Zdmmj4hWzwnC-Ka/view?usp=drive_link"}
   ],
 
   # --- CLASS 10 ---
@@ -114,49 +94,53 @@ DATABASE = {
 }
 
 def main(page: ft.Page):
-    # 1. CONFIG
+    # 1. CONFIGURATION
     page.title = "WB-NEXUS"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # 2. APP LAUNCHER (CLICK TO START)
+    # --- 2. LOGIC ---
     def launch_app(e):
+        # INTERNET CHECK
+        try:
+            requests.get("https://www.google.com", timeout=3)
+        except:
+            page.snack_bar = ft.SnackBar(ft.Text("⚠️ No Internet! Some features may fail."), bgcolor="red")
+            page.snack_bar.open = True
+            page.update()
+        
         page.clean()
         
-        # --- 3. UTILS ---
+        # State
+        current_search = [""]
+        current_tab = [0]
+        
+        # Utils
         def handle_link(e):
             if e.control.data: page.launch_url(e.control.data)
 
-        # --- 4. COMPONENT: BOOK/PAPER CARD (Dual Icons) ---
+        # --- PRETTY UI BUILDERS ---
         def create_card(title, link, icon, color):
             return ft.Container(
                 content=ft.Row([
-                    ft.Container(
-                        content=ft.Icon(icon, color=color, size=24),
-                        padding=10, 
-                        bgcolor=ft.colors.with_opacity(0.1, color), 
-                        border_radius=10
-                    ),
+                    ft.Container(content=ft.Icon(icon, color=color, size=24), padding=10, bgcolor=ft.colors.with_opacity(0.1, color), border_radius=10),
                     ft.Column([
-                        ft.Text(title, weight="bold", size=14, color="white", width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                        ft.Text("WB Official", size=10, color="grey"),
+                        ft.Text(title, weight="bold", size=14, color="white", width=160, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                        ft.Text("Official PDF", size=11, color="grey"),
                     ], expand=True, spacing=2),
                     
-                    # VIEW ICON (Eye)
+                    # DUAL ACTION BUTTONS
                     ft.IconButton(ft.icons.VISIBILITY, icon_color="grey", tooltip="View", data=link, on_click=handle_link),
-                    # DOWNLOAD ICON (Arrow)
                     ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, tooltip="Download", data=link, on_click=handle_link)
                 ], alignment="spaceBetween"),
-                bgcolor="#1f1f1f", padding=10, border_radius=12, margin=ft.margin.only(bottom=8)
+                bgcolor="#1f1f1f", padding=10, border_radius=15, margin=ft.margin.only(bottom=8)
             )
 
-        # --- 5. COMPONENT: COLLEGE CARD ---
         def create_college_card(item):
-            seats = item.get('seats', 0)
-            col = "green" if seats > 0 else "red"
-            status = f"{seats} SEATS" if seats > 0 else "FULL"
+            col = "green" if item.get('seats', 0) > 0 else "red"
+            status = f"{item.get('seats', 0)} LEFT" if item.get('seats', 0) > 0 else "FULL"
             return ft.Container(
                 content=ft.Column([
                     ft.Row([
@@ -167,17 +151,42 @@ def main(page: ft.Page):
                         ft.Container(content=ft.Text(status, size=10, weight="bold", color="black"), 
                                      bgcolor=col, padding=5, border_radius=5)
                     ]),
-                    ft.Divider(height=5, color="#333"),
+                    ft.Divider(height=10, color="#333"),
                     ft.Row([
                         ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
-                        ft.ElevatedButton("Apply", height=25, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
+                        ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
                                           data=item['link'], on_click=handle_link)
                     ], alignment="spaceBetween")
                 ]),
-                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15, border=ft.border.all(1, "#333")
+                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15
             )
 
-        # --- 6. AI CHAT LOGIC ---
+        # --- AI LOGIC (LIGHTWEIGHT) ---
+        def generate_ai_response(prompt):
+            try:
+                # STRICT SYSTEM PROMPT
+                full_prompt = (
+                    "You are a strict AI Tutor for West Bengal Board students (WBBSE/WBCHSE). "
+                    "Your ONLY purpose is to answer educational questions, suggest topics, and help with exams. "
+                    "If the user asks about ANYTHING else (movies, dating, politics, violence, jokes), "
+                    "refuse by saying: 'I am an educational AI. I only discuss studies.' "
+                    f"User Question: {prompt}"
+                )
+                
+                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+                params = {"key": "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g"} # YOUR KEY
+                headers = {"Content-Type": "application/json"}
+                data = {"contents": [{"parts": [{"text": full_prompt}]}]}
+                
+                response = requests.post(url, headers=headers, params=params, json=data)
+                
+                if response.status_code == 200:
+                    return response.json()['candidates'][0]['content']['parts'][0]['text']
+                else:
+                    return "Error: AI Service Unavailable."
+            except:
+                return "Error: Check Internet Connection."
+
         chat_history = ft.Column(scroll="auto", expand=True, spacing=15)
         
         def send_ai(e):
@@ -194,38 +203,25 @@ def main(page: ft.Page):
                 )
             )
             
-            # Thinking Bubble
-            loading_bubble = ft.Container(
-                content=ft.Row([ft.ProgressRing(width=16, height=16, stroke_width=2), ft.Text(" Thinking...", size=12)], spacing=10),
-                bgcolor="#1f1f1f", padding=10, border_radius=12, width=120
-            )
-            chat_history.controls.append(loading_bubble)
+            loading = ft.Text("Thinking...", color="cyan", italic=True)
+            chat_history.controls.append(loading)
             page.update()
 
-            # Process AI (Threaded to prevent freeze)
-            def process_response():
-                try:
-                    if ai_model:
-                        response = ai_model.generate_content(q)
-                        text = response.text
-                    else:
-                        text = "AI is offline (Key Error or No Internet)."
-                except Exception as err:
-                    text = f"Error: {str(err)}"
-                
-                # Update UI
-                chat_history.controls.remove(loading_bubble)
+            def process():
+                res = generate_ai_response(q)
+                chat_history.controls.remove(loading)
+                # AI Bubble (Left)
                 chat_history.controls.append(
                     ft.Container(
-                        content=ft.Markdown(text, selectable=True),
-                        bgcolor="#003333", border=ft.border.all(1, "cyan"),
+                        content=ft.Markdown(res, selectable=True),
+                        bgcolor="#004d40", border=ft.border.all(1, "cyan"),
                         padding=12, border_radius=ft.border_radius.only(12,12,12,0),
                         margin=ft.margin.only(right=20)
                     )
                 )
                 page.update()
 
-            threading.Thread(target=process_response).start()
+            threading.Thread(target=process).start()
 
         ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
                                 bgcolor="#222", border_width=0, on_submit=send_ai)
@@ -238,49 +234,80 @@ def main(page: ft.Page):
             )
         ], expand=True)
 
-        # --- 7. PRE-BUILD OTHER TABS ---
-        
-        # Books View
-        books_col = ft.Column(scroll="auto", padding=15)
-        # Class 11-12 Header
-        if "books_hs" in DATABASE:
-            books_col.controls.append(ft.Text("HIGHER SECONDARY (11-12)", color="cyan", weight="bold"))
-            for x in DATABASE["books_hs"]: books_col.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
+        # --- DYNAMIC CONTENT LOADER ---
+        body_content = ft.Column(scroll="auto", padding=15, expand=True)
 
-        # Class 10-8
-        for k in ["books_class_10", "books_class_9", "books_class_8"]:
-            if k in DATABASE:
-                books_col.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-                for x in DATABASE[k]: books_col.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+        def update_view():
+            body_content.controls.clear()
+            idx = current_tab[0]
+            query = current_search[0].lower()
+            def match(text): return query in text.lower()
 
-        # Papers View
-        papers_col = ft.Column(scroll="auto", padding=15)
-        for k in ["papers_2024", "papers_2023", "papers_2022"]:
-            if k in DATABASE:
-                papers_col.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-                for x in DATABASE[k]: papers_col.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+            if idx == 0: # Books
+                # HS Header
+                if "books_hs" in DATABASE:
+                    if any(match(x['title']) for x in DATABASE["books_hs"]):
+                        body_content.controls.append(ft.Text("CLASS 11 & 12 (HS)", color="cyan", weight="bold"))
+                        for x in DATABASE["books_hs"]: 
+                             if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
 
-        # College View
-        college_col = ft.Column(scroll="auto", padding=15)
-        college_col.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
-        for x in DATABASE["colleges"]: college_col.controls.append(create_college_card(x))
+                # Regular Classes
+                for k in ["books_class_10", "books_class_9", "books_class_8"]:
+                    items = [x for x in DATABASE[k] if match(x['title'])]
+                    if items:
+                        body_content.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+                        for x in items: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-        # Syllabus View
-        syllabus_col = ft.Column(scroll="auto", padding=15)
-        syllabus_col.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
-        for x in DATABASE["syllabus_2025"]: syllabus_col.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+            elif idx == 1: # Papers
+                for k in ["papers_2024", "papers_2023", "papers_2022"]:
+                    items = [x for x in DATABASE[k] if match(x['title'])]
+                    if items:
+                        body_content.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+                        for x in items: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-        # --- 8. NAVIGATION ---
-        body = ft.Container(content=books_col, expand=True)
+            elif idx == 2: # Syllabus
+                body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
+                for x in DATABASE["syllabus_2025"]: 
+                    if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-        def on_nav(e):
-            idx = e.control.selected_index
-            if idx == 0: body.content = books_col
-            elif idx == 1: body.content = papers_col
-            elif idx == 2: body.content = syllabus_col
-            elif idx == 3: body.content = college_col
-            elif idx == 4: body.content = ai_view
+            elif idx == 3: # Colleges
+                body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
+                for x in DATABASE["colleges"]:
+                    if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
+            
+            # Empty State
+            if not body_content.controls:
+                body_content.controls.append(ft.Text("No results found.", color="grey", italic=True))
+            
             page.update()
+
+        # --- NAVIGATION ---
+        def on_nav(e):
+            current_tab[0] = e.control.selected_index
+            if e.control.selected_index == 4: # AI Tab
+                # Swap main body container entirely for AI view
+                main_layout.content = ai_view
+            else:
+                main_layout.content = body_content
+                update_view()
+            page.update()
+
+        def on_search(e):
+            current_search[0] = e.control.value
+            update_view()
+
+        header = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
+                    ft.Text("WB-NEXUS", size=22, weight="bold")
+                ], alignment="center"),
+                ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
+                             border_radius=20, bgcolor="#222", border_width=0, on_change=on_search)
+            ]),
+            padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
+            bgcolor="#111"
+        )
 
         nav_bar = ft.NavigationBar(
             selected_index=0,
@@ -295,26 +322,25 @@ def main(page: ft.Page):
             ]
         )
 
-        header = ft.Container(
-            content=ft.Row([ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28), ft.Text("WB-NEXUS", size=22, weight="bold")], alignment="center"),
-            padding=ft.padding.only(top=40, bottom=15), bgcolor="#0a0a0a",
-            border=ft.border.only(bottom=ft.border.BorderSide(1, "#222"))
-        )
+        # Main Layout Holder
+        main_layout = ft.Container(content=body_content, expand=True)
 
-        page.add(ft.Column([header, body], expand=True, spacing=0), nav_bar)
-        page.update()
+        update_view() # Initial Load
+        page.add(header, main_layout, nav_bar)
 
-    # --- 9. STARTUP SCREEN (SAFETY) ---
+    # --- 3. STARTUP SCREEN (SAFE) ---
     start_btn = ft.Container(
         content=ft.Column([
             ft.Icon(name=ft.icons.SHIELD_MOON, size=100, color="cyan"),
             ft.Text("WB-NEXUS", size=35, weight="bold", color="white"),
-            ft.Text("Student Portal", size=14, color="grey"),
+            ft.Text("Your Academic Companion", size=14, color="grey"),
             ft.Container(height=40),
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
         ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
+        alignment=ft.alignment.center,
+        expand=True,
+        bgcolor="#0a0a0a"
     )
 
     page.add(start_btn)
