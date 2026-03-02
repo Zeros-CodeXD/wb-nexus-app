@@ -2,34 +2,21 @@ import flet as ft
 import requests
 import threading
 
-# --- 1. THE COMPLETE MASTER DATABASE ---
+# --- 1. THE MASTER DATABASE ---
 DATABASE = {
-  # --- NEW: CLASS 11 & 12 (WBCHSE) ---
-  "books_hs": [
-    {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
-    {"title": "Bangalir Bhasha O Sanaskriti - Class 11", "link": "https://drive.google.com/file/d/1dUgC4Mck79Wo9a8gXnOJfL_E9LXrP22e/view?usp=drive_link"},
-    {"title": "Sahitya Chorcha - Class 11", "link": "https://drive.google.com/file/d/1sLUQVNCDE0xF5Myw4it94O8EmoLmfjmc/view?usp=drive_link"},
-    {"title": "Sahitya Chorcha - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
-    {"title": "Mediscape (Medical Prep)", "link": "https://drive.google.com/file/d/1Dpo7rvUbMl2OPk6_4Mwg1tI6FVXkYu36/view?usp=drive_link"},
-    {"title": "Rhapsody English (A) - Class 11 & 12", "link": "https://drive.google.com/file/d/1qvb5CVobsd3RMHJCqt5HiMoqOYB1fP-t/view?usp=drive_link"},
-    {"title": "Sahitya Katha - Class 11 & 12", "link": "https://drive.google.com/file/d/13oE6xt5pOoIh7rmj9Zdmmj4hWzwnC-Ka/view?usp=drive_link"}
-  ],
-
-  # --- CLASS 10 ---
+  # --- BOOKS ---
   "books_class_10": [
     {"title": "Sahitya Sanchayan (Bengali)", "link": "https://drive.google.com/file/d/1iQAADSemG8pJCG2phDGwGEdrpNGG1_9m/view"},
     {"title": "Bliss (English)", "link": "https://drive.google.com/file/d/1J8ACc0y2ftQ_wSjEqx-C0sA_d8ZjImkx/view"},
     {"title": "Ganit Prakash (Math)", "link": "https://drive.google.com/file/d/11TITkwOSGAFYSz015YStiaxUOUExTkfa/view"},
     {"title": "Koni (Rapid Reader)", "link": "https://drive.google.com/file/d/1jJ-YJIkSyYFG7bSt9Ui9RLfZDWApLKDp/view"}
   ],
-  # --- CLASS 9 ---
   "books_class_9": [
     {"title": "Sahitya Sanchayan (Class 9)", "link": "https://drive.google.com/file/d/1W1iXt6ba7cKGXK06wU0PdDAP9yq_BNdI/view"},
     {"title": "Bliss (Class 9 English)", "link": "https://drive.google.com/file/d/1MJfjJt_9UrG04iMAanWz2izBx_RaBsgc/view"},
     {"title": "Ganit Prakash (Class 9)", "link": "https://drive.google.com/file/d/1bLVwDsYfENQPta5O6w6DQMOvFURorsJj/view"},
     {"title": "Aam Aatir Bhepu", "link": "https://drive.google.com/file/d/1LdJle7dtqQnfdds_0ENfj3a6KmWACqu-/view"}
   ],
-  # --- CLASS 8 ---
   "books_class_8": [
     {"title": "Poribesh O Bigyan", "link": "https://drive.google.com/file/d/18BUfpM6iwruuXPcOyNTpYpIsifrwypPN/view"},
     {"title": "Blossoms", "link": "https://drive.google.com/file/d/1ETK2c1uJ802-hOiy0AsYHcmt8imEv_Fw/view"},
@@ -39,44 +26,53 @@ DATABASE = {
     {"title": "Atit O Aitihya", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
     {"title": "Amader Prithibi", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"}
   ],
+  "books_hs": [
+    {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
+    {"title": "Sahitya Chorcha (Bengali) - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
+    {"title": "Sahitya Chorcha (Bengali) - Class 11", "link": "https://drive.google.com/file/d/1sLUQVNCDE0xF5Myw4it94O8EmoLmfjmc/view?usp=drive_link"},
+    {"title": "Bangalir Bhasha O Sanaskriti - Class 11", "link": "https://drive.google.com/file/d/1dUgC4Mck79Wo9a8gXnOJfL_E9LXrP22e/view?usp=drive_link"},
+    {"title": "Rhapsody English (A) - Class 11 & 12", "link": "https://drive.google.com/file/d/1qvb5CVobsd3RMHJCqt5HiMoqOYB1fP-t/view?usp=drive_link"},
+    {"title": "Sahitya Katha - Class 11 & 12", "link": "https://drive.google.com/file/d/13oE6xt5pOoIh7rmj9Zdmmj4hWzwnC-Ka/view?usp=drive_link"},
+    {"title": "Mediscape (Medical Prep)", "link": "https://drive.google.com/file/d/1Dpo7rvUbMl2OPk6_4Mwg1tI6FVXkYu36/view?usp=drive_link"}
+  ],
   
   # --- PAPERS ---
   "papers_2024": [
-    {"title": "2024 Bengali Paper", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
-    {"title": "2024 English Paper", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
-    {"title": "2024 Math Paper", "link": "https://drive.google.com/file/d/1K21V1xGZEAFGXsGjojFzTo74KqpDFmC-/view"},
-    {"title": "2024 Physical Science", "link": "https://drive.google.com/file/d/1isrdJmWektP7UNi4heeYF52jcuzHHFqF/view"},
-    {"title": "2024 Life Science", "link": "https://drive.google.com/file/d/10uMrtr3cOujv_e07XkaliaEx16Gv9XGf/view"},
+    {"title": "2024 Bengali", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
+    {"title": "2024 English", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
+    {"title": "2024 Math", "link": "https://drive.google.com/file/d/1K21V1xGZEAFGXsGjojFzTo74KqpDFmC-/view"},
+    {"title": "2024 Phy Sci", "link": "https://drive.google.com/file/d/1isrdJmWektP7UNi4heeYF52jcuzHHFqF/view"},
+    {"title": "2024 Life Sci", "link": "https://drive.google.com/file/d/10uMrtr3cOujv_e07XkaliaEx16Gv9XGf/view"},
     {"title": "2024 History", "link": "https://drive.google.com/file/d/1i1C-plnjdPTpHN551J3xHlcxFzkHRQNE/view"},
     {"title": "2024 Geography", "link": "https://drive.google.com/file/d/1M3oyhEVcA_XW6_-X5L4l1eAhEJTPDh41/view"}
   ],
   "papers_2023": [
-    {"title": "2023 Bengali Paper", "link": "https://drive.google.com/file/d/1Eijq8S0kYZG6pZK3cwoO5pcNcIxslH_W/view"},
-    {"title": "2023 English Paper", "link": "https://drive.google.com/file/d/1XnGDf2ekn4ljc5LP4_kpRPFXkXrhDuHs/view"},
-    {"title": "2023 Math Paper", "link": "https://drive.google.com/file/d/1q8ev-LLr6Ry7jwIWY3M3n3oO3V2rehx-/view"},
-    {"title": "2023 Physical Science", "link": "https://drive.google.com/file/d/1GvH9M-sEWNIX9vDM2GOKmFx1OZyCHHlO/view"},
-    {"title": "2023 Life Science", "link": "https://drive.google.com/file/d/1LywHj2UH2mc2qrJD4KPPKvYbsfwAOTYx/view"},
+    {"title": "2023 Bengali", "link": "https://drive.google.com/file/d/1Eijq8S0kYZG6pZK3cwoO5pcNcIxslH_W/view"},
+    {"title": "2023 English", "link": "https://drive.google.com/file/d/1XnGDf2ekn4ljc5LP4_kpRPFXkXrhDuHs/view"},
+    {"title": "2023 Math", "link": "https://drive.google.com/file/d/1q8ev-LLr6Ry7jwIWY3M3n3oO3V2rehx-/view"},
+    {"title": "2023 Phy Sci", "link": "https://drive.google.com/file/d/1GvH9M-sEWNIX9vDM2GOKmFx1OZyCHHlO/view"},
+    {"title": "2023 Life Sci", "link": "https://drive.google.com/file/d/1LywHj2UH2mc2qrJD4KPPKvYbsfwAOTYx/view"},
     {"title": "2023 History", "link": "https://drive.google.com/file/d/1LSiZV1yY4QtUPq8Xu8HWFxCDOpScnO7y/view"},
     {"title": "2023 Geography", "link": "https://drive.google.com/file/d/1shP3OooAaWdeoM2oAnxWR92TEw5uU3QF/view"}
   ],
   "papers_2022": [
-    {"title": "2022 Bengali Paper", "link": "https://drive.google.com/file/d/1qiNdm9CJYefLZ-wF-qDLCQnMZNbR7ebU/view"},
-    {"title": "2022 English Paper", "link": "https://drive.google.com/file/d/1vuK6W9evHONNvHmk2nUOxvIYw6BdCCtr/view"},
-    {"title": "2022 Math Paper", "link": "https://drive.google.com/file/d/1XDwjyeTHDkRnXjJatqMjG-ZtFNEb3hBW/view"},
-    {"title": "2022 Physical Science", "link": "https://drive.google.com/file/d/1sYrcwl5gLVCNEFEcrR4QypBsBe78IQ9g/view"},
-    {"title": "2022 Life Science", "link": "https://drive.google.com/file/d/1zNaUAAEklNCKYdv_dRny_gyfotg5eGOM/view"},
+    {"title": "2022 Bengali", "link": "https://drive.google.com/file/d/1qiNdm9CJYefLZ-wF-qDLCQnMZNbR7ebU/view"},
+    {"title": "2022 English", "link": "https://drive.google.com/file/d/1vuK6W9evHONNvHmk2nUOxvIYw6BdCCtr/view"},
+    {"title": "2022 Math", "link": "https://drive.google.com/file/d/1XDwjyeTHDkRnXjJatqMjG-ZtFNEb3hBW/view"},
+    {"title": "2022 Phy Sci", "link": "https://drive.google.com/file/d/1sYrcwl5gLVCNEFEcrR4QypBsBe78IQ9g/view"},
+    {"title": "2022 Life Sci", "link": "https://drive.google.com/file/d/1zNaUAAEklNCKYdv_dRny_gyfotg5eGOM/view"},
     {"title": "2022 History", "link": "https://drive.google.com/file/d/1ZW4c3u6-G9gPXbMxAO1MQk6-_kh9r05g/view"},
     {"title": "2022 Geography", "link": "https://drive.google.com/file/d/19QWjSKary4IXrv9Bwa0oyADDTXmc3dPA/view"}
   ],
   "colleges": [
-    {"name": "Jadavpur Univ", "dept": "CSE / IT", "seats": 12, "cutoff": "98%", "link": "https://jadavpuruniversity.in/"},
-    {"name": "Jadavpur Univ", "dept": "Physics Hons", "seats": 8, "cutoff": "94%", "link": "https://jadavpuruniversity.in/"},
+    {"name": "Jadavpur Univ", "dept": "Science", "seats": 15, "cutoff": "98%", "link": "https://jadavpuruniversity.in/"},
+    {"name": "Jadavpur Univ", "dept": "Engineering", "seats": 12, "cutoff": "WBJEE < 100", "link": "https://jadavpuruniversity.in/"},
     {"name": "Calcutta Univ", "dept": "B.Tech", "seats": 25, "cutoff": "90%", "link": "https://www.caluniv.ac.in/"},
-    {"name": "Presidency Univ", "dept": "Economics", "seats": 0, "cutoff": "CLOSED", "link": "https://presiuniv.ac.in/"},
-    {"name": "St. Xavier's College", "dept": "B.Com", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
-    {"name": "St. Xavier's College", "dept": "Microbiology", "seats": 5, "cutoff": "95%", "link": "https://www.sxccal.edu/"},
+    {"name": "Presidency Univ", "dept": "Arts", "seats": 0, "cutoff": "CLOSED", "link": "https://presiuniv.ac.in/"},
+    {"name": "St. Xavier's", "dept": "Microbio", "seats": 5, "cutoff": "95%", "link": "https://www.sxccal.edu/"},
+    {"name": "St. Xavier's", "dept": "B.Com", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
     {"name": "Scottish Church", "dept": "Chemistry", "seats": 15, "cutoff": "88%", "link": "https://www.scottishchurch.ac.in/"},
-    {"name": "Heritage Institute", "dept": "CSE", "seats": 40, "cutoff": "WBJEE", "link": "https://www.heritageit.edu/"},
+    {"name": "Heritage Inst", "dept": "B.Tech", "seats": 40, "cutoff": "WBJEE", "link": "https://www.heritageit.edu/"},
     {"name": "Techno India", "dept": "ECE", "seats": 60, "cutoff": "Direct", "link": "https://www.technoindiauniversity.ac.in/"},
     {"name": "IEM Kolkata", "dept": "BCA", "seats": 20, "cutoff": "Exam", "link": "https://iem.edu.in/"},
     {"name": "Bethune College", "dept": "English", "seats": 10, "cutoff": "91%", "link": "http://www.bethunecollege.ac.in/"},
@@ -94,53 +90,48 @@ DATABASE = {
 }
 
 def main(page: ft.Page):
-    # 1. CONFIGURATION
+    # 1. CONFIG
     page.title = "WB-NEXUS"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # --- 2. LOGIC ---
+    # --- 2. CLICK-TO-START LOGIC ---
     def launch_app(e):
-        # INTERNET CHECK
-        try:
-            requests.get("https://www.google.com", timeout=3)
-        except:
-            page.snack_bar = ft.SnackBar(ft.Text("⚠️ No Internet! Some features may fail."), bgcolor="red")
-            page.snack_bar.open = True
-            page.update()
-        
         page.clean()
         
-        # State
-        current_search = [""]
-        current_tab = [0]
-        
-        # Utils
+        # UTILS
         def handle_link(e):
             if e.control.data: page.launch_url(e.control.data)
 
-        # --- PRETTY UI BUILDERS ---
+        # UI: Resource Card
         def create_card(title, link, icon, color):
             return ft.Container(
                 content=ft.Row([
-                    ft.Container(content=ft.Icon(icon, color=color, size=24), padding=10, bgcolor=ft.colors.with_opacity(0.1, color), border_radius=10),
+                    ft.Container(
+                        content=ft.Icon(icon, color=color, size=24),
+                        padding=10, 
+                        bgcolor=ft.colors.with_opacity(0.1, color), 
+                        border_radius=10
+                    ),
                     ft.Column([
-                        ft.Text(title, weight="bold", size=14, color="white", width=160, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                        ft.Text("Official PDF", size=11, color="grey"),
+                        ft.Text(title, weight="bold", size=14, color="white", width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                        ft.Text("WB Official", size=10, color="grey"),
                     ], expand=True, spacing=2),
                     
-                    # DUAL ACTION BUTTONS
+                    # VIEW ICON (Eye)
                     ft.IconButton(ft.icons.VISIBILITY, icon_color="grey", tooltip="View", data=link, on_click=handle_link),
+                    # DOWNLOAD ICON (Arrow)
                     ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, tooltip="Download", data=link, on_click=handle_link)
                 ], alignment="spaceBetween"),
-                bgcolor="#1f1f1f", padding=10, border_radius=15, margin=ft.margin.only(bottom=8)
+                bgcolor="#1f1f1f", padding=10, border_radius=12, margin=ft.margin.only(bottom=8)
             )
 
+        # UI: College Card
         def create_college_card(item):
             col = "green" if item.get('seats', 0) > 0 else "red"
-            status = f"{item.get('seats', 0)} LEFT" if item.get('seats', 0) > 0 else "FULL"
+            status = f"{item.get('seats', 0)} SEATS" if item.get('seats', 0) > 0 else "FULL"
             return ft.Container(
                 content=ft.Column([
                     ft.Row([
@@ -151,30 +142,29 @@ def main(page: ft.Page):
                         ft.Container(content=ft.Text(status, size=10, weight="bold", color="black"), 
                                      bgcolor=col, padding=5, border_radius=5)
                     ]),
-                    ft.Divider(height=10, color="#333"),
+                    ft.Divider(height=5, color="#333"),
                     ft.Row([
                         ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
-                        ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
+                        ft.ElevatedButton("Apply", height=25, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
                                           data=item['link'], on_click=handle_link)
                     ], alignment="spaceBetween")
                 ]),
-                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15
+                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15, border=ft.border.all(1, "#333")
             )
 
         # --- AI LOGIC (LIGHTWEIGHT) ---
         def generate_ai_response(prompt):
             try:
-                # STRICT SYSTEM PROMPT
                 full_prompt = (
                     "You are a strict AI Tutor for West Bengal Board students (WBBSE/WBCHSE). "
-                    "Your ONLY purpose is to answer educational questions, suggest topics, and help with exams. "
-                    "If the user asks about ANYTHING else (movies, dating, politics, violence, jokes), "
+                    "Your ONLY purpose is to answer educational questions. "
+                    "If the user asks about ANYTHING else (movies, dating, politics, violence), "
                     "refuse by saying: 'I am an educational AI. I only discuss studies.' "
                     f"User Question: {prompt}"
                 )
                 
                 url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-                params = {"key": "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g"} # YOUR KEY
+                params = {"key": "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g"} # API KEY
                 headers = {"Content-Type": "application/json"}
                 data = {"contents": [{"parts": [{"text": full_prompt}]}]}
                 
@@ -184,8 +174,8 @@ def main(page: ft.Page):
                     return response.json()['candidates'][0]['content']['parts'][0]['text']
                 else:
                     return "Error: AI Service Unavailable."
-            except:
-                return "Error: Check Internet Connection."
+            except Exception as e:
+                return f"Error: Check Internet Connection."
 
         chat_history = ft.Column(scroll="auto", expand=True, spacing=15)
         
@@ -234,80 +224,47 @@ def main(page: ft.Page):
             )
         ], expand=True)
 
-        # --- DYNAMIC CONTENT LOADER ---
-        body_content = ft.Column(scroll="auto", padding=15, expand=True)
 
-        def update_view():
-            body_content.controls.clear()
-            idx = current_tab[0]
-            query = current_search[0].lower()
-            def match(text): return query in text.lower()
+        # --- MAIN BODY CONTAINER ---
+        body = ft.Container(expand=True)
+
+        # --- DYNAMIC CONTENT LOADER ---
+        def load_tab_content(idx):
+            # We build the list ONLY when the tab is clicked to prevent memory overload
+            content_list = ft.ListView(expand=True, padding=15, spacing=5)
 
             if idx == 0: # Books
-                # HS Header
                 if "books_hs" in DATABASE:
-                    if any(match(x['title']) for x in DATABASE["books_hs"]):
-                        body_content.controls.append(ft.Text("CLASS 11 & 12 (HS)", color="cyan", weight="bold"))
-                        for x in DATABASE["books_hs"]: 
-                             if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
-
-                # Regular Classes
+                    content_list.controls.append(ft.Text("CLASS 11-12 (HS)", color="cyan", weight="bold"))
+                    for x in DATABASE["books_hs"]: content_list.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
                 for k in ["books_class_10", "books_class_9", "books_class_8"]:
-                    items = [x for x in DATABASE[k] if match(x['title'])]
-                    if items:
-                        body_content.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-                        for x in items: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
-
+                    if k in DATABASE:
+                        content_list.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+                        for x in DATABASE[k]: content_list.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+            
             elif idx == 1: # Papers
                 for k in ["papers_2024", "papers_2023", "papers_2022"]:
-                    items = [x for x in DATABASE[k] if match(x['title'])]
-                    if items:
-                        body_content.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-                        for x in items: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+                    if k in DATABASE:
+                        content_list.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+                        for x in DATABASE[k]: content_list.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
             elif idx == 2: # Syllabus
-                body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
-                for x in DATABASE["syllabus_2025"]: 
-                    if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+                content_list.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
+                for x in DATABASE.get("syllabus_2025", []): content_list.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
             elif idx == 3: # Colleges
-                body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
-                for x in DATABASE["colleges"]:
-                    if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
+                content_list.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
+                for x in DATABASE.get("colleges", []): content_list.controls.append(create_college_card(x))
             
-            # Empty State
-            if not body_content.controls:
-                body_content.controls.append(ft.Text("No results found.", color="grey", italic=True))
-            
-            page.update()
+            return content_list
 
-        # --- NAVIGATION ---
         def on_nav(e):
-            current_tab[0] = e.control.selected_index
-            if e.control.selected_index == 4: # AI Tab
-                # Swap main body container entirely for AI view
-                main_layout.content = ai_view
+            idx = e.control.selected_index
+            if idx == 4: # AI Tab
+                body.content = ai_view
             else:
-                main_layout.content = body_content
-                update_view()
+                body.content = load_tab_content(idx)
             page.update()
-
-        def on_search(e):
-            current_search[0] = e.control.value
-            update_view()
-
-        header = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
-                    ft.Text("WB-NEXUS", size=22, weight="bold")
-                ], alignment="center"),
-                ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
-                             border_radius=20, bgcolor="#222", border_width=0, on_change=on_search)
-            ]),
-            padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
-            bgcolor="#111"
-        )
 
         nav_bar = ft.NavigationBar(
             selected_index=0,
@@ -322,18 +279,24 @@ def main(page: ft.Page):
             ]
         )
 
-        # Main Layout Holder
-        main_layout = ft.Container(content=body_content, expand=True)
+        header = ft.Container(
+            content=ft.Row([ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28), ft.Text("WB-NEXUS", size=22, weight="bold")], alignment="center"),
+            padding=ft.padding.only(top=40, bottom=15), bgcolor="#0a0a0a",
+            border=ft.border.only(bottom=ft.border.BorderSide(1, "#222"))
+        )
 
-        update_view() # Initial Load
-        page.add(header, main_layout, nav_bar)
+        # Initial Load (Books)
+        body.content = load_tab_content(0)
+
+        page.add(ft.Column([header, body], expand=True, spacing=0), nav_bar)
+        page.update()
 
     # --- 3. STARTUP SCREEN (SAFE) ---
     start_btn = ft.Container(
         content=ft.Column([
             ft.Icon(name=ft.icons.SHIELD_MOON, size=100, color="cyan"),
             ft.Text("WB-NEXUS", size=35, weight="bold", color="white"),
-            ft.Text("Your Academic Companion", size=14, color="grey"),
+            ft.Text("Student Portal", size=14, color="grey"),
             ft.Container(height=40),
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
