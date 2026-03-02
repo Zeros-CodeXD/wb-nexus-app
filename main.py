@@ -1,5 +1,6 @@
 import flet as ft
 import requests
+import threading
 import json
 
 # --- 1. CONFIGURATION ---
@@ -7,6 +8,7 @@ API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g"
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
+  # --- BOOKS ---
   "books_hs": [
     {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
     {"title": "Sahitya Chorcha (Bengali) - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
@@ -37,6 +39,7 @@ DATABASE = {
     {"title": "Atit O Aitihya", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
     {"title": "Amader Prithibi", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"}
   ],
+  # --- PAPERS ---
   "papers_2024": [
     {"title": "2024 Bengali Paper", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
     {"title": "2024 English Paper", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
@@ -102,24 +105,26 @@ def main(page: ft.Page):
         try:
             page.clean()
             
-            # State
-            current_search = [""]
-            current_tab = [0]
+            # --- GLOBAL STATE (For Sliders/AI) ---
+            ai_temp = [0.5]
             
-            # Utils
+            # --- UTILS ---
             def handle_link(e):
                 if e.control.data: page.launch_url(e.control.data)
 
-            # --- PRETTY UI BUILDERS (GRADIENTS & SHADOWS) ---
+            # --- UI BUILDERS ---
             def create_card(title, link, icon, color):
                 return ft.Container(
                     content=ft.Row([
                         ft.Container(content=ft.Icon(icon, color=color, size=24), padding=10, bgcolor=ft.colors.with_opacity(0.1, color), border_radius=10),
                         ft.Column([
-                            ft.Text(title, weight="bold", size=14, color="white", width=200, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                            ft.Text("Tap to Download", size=11, color="grey"),
+                            ft.Text(title, weight="bold", size=14, color="white", width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.Text("Official PDF", size=10, color="grey"),
                         ], expand=True, spacing=2),
-                        ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, data=link, on_click=handle_link)
+                        
+                        # DUAL ACTION BUTTONS
+                        ft.IconButton(ft.icons.VISIBILITY, icon_color="grey", tooltip="View", data=link, on_click=handle_link),
+                        ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, tooltip="Download", data=link, on_click=handle_link)
                     ], alignment="spaceBetween"),
                     bgcolor="#1a1a1a", padding=10, border_radius=15, margin=ft.margin.only(bottom=8),
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black")),
@@ -150,9 +155,123 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
+            # --- AI LOGIC (LIGHTWEIGHT) ---
+            def generate_ai_response(prompt, temp):
+                try:
+                    full_prompt = (
+                        "You are a strict AI Tutor for West Bengal Board students (WBBSE/WBCHSE). "
+                        "Your ONLY purpose is to answer educational questions. "
+                        "If the user asks about ANYTHING else (movies, dating, politics, violence), "
+                        "refuse by saying: 'I am an educational AI. I only discuss studies.' "
+                        f"User Question: {prompt}"
+                    )
+                    
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                    headers = {"Content-Type": "application/json"}
+                    data = {"contents": [{"parts": [{"text": full_prompt}]}], "generationConfig": {"temperature": temp}}
+                    
+                    response = requests.post(url, headers=headers, json=data, timeout=10)
+                    
+                    if response.status_code == 200:
+                        return response.json()['candidates'][0]['content']['parts'][0]['text']
+                    else:
+                        return f"AI Error: {response.status_code}"
+                except Exception as e:
+                    return f"Connection Failed: {str(e)}"
+
+            chat_list = ft.ListView(expand=True, spacing=15, padding=10)
+            
+            def send_ai(e):
+                q = ai_input.value
+                if not q: return
+                ai_input.value = ""
+                
+                # User Bubble (Right)
+                chat_list.controls.append(
+                    ft.Container(
+                        content=ft.Text(q, color="white"),
+                        bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
+                        alignment=ft.alignment.center_right, margin=ft.margin.only(left=50)
+                    )
+                )
+                
+                loading = ft.Text("Thinking...", color="cyan", italic=True)
+                chat_list.controls.append(loading)
+                page.update()
+
+                def process():
+                    res = generate_ai_response(q, ai_temp[0])
+                    chat_list.controls.remove(loading)
+                    # AI Bubble (Left)
+                    chat_list.controls.append(
+                        ft.Container(
+                            content=ft.Text(res, color="white", selectable=True),
+                            bgcolor="#004d40", padding=12, border_radius=ft.border_radius.only(12,12,12,0),
+                            margin=ft.margin.only(right=20)
+                        )
+                    )
+                    page.update()
+
+                threading.Thread(target=process).start()
+
+            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
+                                    bgcolor="#222", border_width=0, on_submit=send_ai)
+
+            # --- DRAWERS (SIDE SLIDERS) ---
+            
+            # Left Drawer: AI Settings
+            def change_temp(e):
+                ai_temp[0] = float(e.control.value)
+                
+            page.drawer = ft.NavigationDrawer(
+                controls=[
+                    ft.Container(height=12),
+                    ft.Text("AI Settings", size=20, weight="bold", color="cyan", text_align="center"),
+                    ft.Divider(),
+                    ft.Container(content=ft.Column([
+                        ft.Text("Creativity Level", size=14),
+                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=change_temp),
+                        ft.Text("0.0 = Strict | 1.0 = Creative", size=11, color="grey")
+                    ]), padding=15)
+                ], bgcolor="#111"
+            )
+
+            # Right Drawer: History
+            def clear_chat(e):
+                chat_list.controls.clear()
+                page.close_end_drawer()
+                page.update()
+
+            page.end_drawer = ft.NavigationDrawer(
+                controls=[
+                    ft.Container(height=12),
+                    ft.Text("Chat History", size=20, weight="bold", color="orange", text_align="center"),
+                    ft.Divider(),
+                    ft.Container(content=ft.ElevatedButton("Clear History", bgcolor="red", color="white", on_click=clear_chat), padding=20)
+                ], bgcolor="#111"
+            )
+
+            # --- AI VIEW LAYOUT ---
+            ai_view = ft.Column([
+                ft.Container(
+                    content=ft.Row([
+                        ft.IconButton(ft.icons.SETTINGS, icon_color="grey", on_click=lambda e: page.open_drawer()),
+                        ft.Text("AI TUTOR", weight="bold", size=16, color="cyan"),
+                        ft.IconButton(ft.icons.HISTORY, icon_color="grey", on_click=lambda e: page.open_end_drawer())
+                    ], alignment="spaceBetween"),
+                    padding=10, bgcolor="#111"
+                ),
+                ft.Container(content=chat_list, expand=True, padding=10),
+                ft.Container(
+                    content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND_ROUNDED, icon_color="cyan", on_click=send_ai)]),
+                    padding=10, bgcolor="#111"
+                )
+            ], expand=True)
+
             # --- DYNAMIC CONTENT LOADER (Search Enabled + ListView) ---
-            # KEY CHANGE: Using ListView here guarantees performance
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
+            current_tab = [0]
+            current_search = [""]
 
             def update_view():
                 body_content.controls.clear()
@@ -163,7 +282,6 @@ def main(page: ft.Page):
 
                 if idx == 0: # Books
                     if "books_hs" in DATABASE:
-                        # Only show header if matching items exist
                         if any(match(x['title']) for x in DATABASE["books_hs"]):
                             body_content.controls.append(ft.Text("HIGHER SECONDARY (11-12)", color="cyan", weight="bold"))
                             for x in DATABASE["books_hs"]: 
@@ -194,7 +312,6 @@ def main(page: ft.Page):
                     for x in DATABASE["colleges"]:
                         if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
 
-                # Empty State
                 if not body_content.controls:
                     body_content.controls.append(ft.Text("No results found.", color="grey", italic=True))
                 
@@ -203,7 +320,12 @@ def main(page: ft.Page):
             # --- UI LAYOUT ---
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
-                update_view()
+                if e.control.selected_index == 4: # AI Tab
+                    main_layout.content = ai_view
+                else:
+                    main_layout.content = body_content
+                    update_view()
+                page.update()
 
             def on_search(e):
                 current_search[0] = e.control.value
@@ -234,6 +356,7 @@ def main(page: ft.Page):
                     ft.NavigationDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
                     ft.NavigationDestination(icon=ft.icons.LIST, label="Syllabus"),
                     ft.NavigationDestination(icon=ft.icons.SCHOOL, label="Colleges"),
+                    ft.NavigationDestination(icon=ft.icons.AUTO_AWESOME, label="AI Tutor"),
                 ]
             )
 
@@ -244,8 +367,9 @@ def main(page: ft.Page):
             )
 
             # Assemble
+            main_layout = ft.Container(content=body_content, expand=True)
+            page.add(ft.Column([header, main_layout], expand=True, spacing=0), nav_bar)
             update_view() # Initial Load
-            page.add(ft.Column([header, body_content], expand=True, spacing=0), nav_bar)
 
         except Exception as err:
             page.clean()
