@@ -1,6 +1,5 @@
 import flet as ft
 import requests
-import threading
 import json
 
 # --- 1. CONFIGURATION ---
@@ -8,7 +7,6 @@ API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g"
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
-  # --- BOOKS ---
   "books_hs": [
     {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
     {"title": "Sahitya Chorcha (Bengali) - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
@@ -39,7 +37,6 @@ DATABASE = {
     {"title": "Atit O Aitihya", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
     {"title": "Amader Prithibi", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"}
   ],
-  # --- PAPERS ---
   "papers_2024": [
     {"title": "2024 Bengali Paper", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
     {"title": "2024 English Paper", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
@@ -67,13 +64,12 @@ DATABASE = {
     {"title": "2022 History", "link": "https://drive.google.com/file/d/1ZW4c3u6-G9gPXbMxAO1MQk6-_kh9r05g/view"},
     {"title": "2022 Geography", "link": "https://drive.google.com/file/d/19QWjSKary4IXrv9Bwa0oyADDTXmc3dPA/view"}
   ],
-  # --- COLLEGES ---
   "colleges": [
     {"name": "Jadavpur University", "dept": "CSE / IT", "seats": 12, "cutoff": "98%", "link": "https://jadavpuruniversity.in/"},
     {"name": "Jadavpur University", "dept": "Physics Hons", "seats": 8, "cutoff": "94%", "link": "https://jadavpuruniversity.in/"},
     {"name": "Calcutta University", "dept": "B.Tech", "seats": 25, "cutoff": "90%", "link": "https://www.caluniv.ac.in/"},
     {"name": "Presidency Univ", "dept": "Economics", "seats": 0, "cutoff": "CLOSED", "link": "https://presiuniv.ac.in/"},
-    {"name": "St. Xavier's College", "dept": "B.Com (Morning)", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
+    {"name": "St. Xavier's College", "dept": "B.Com", "seats": 0, "cutoff": "CLOSED", "link": "https://www.sxccal.edu/"},
     {"name": "St. Xavier's College", "dept": "Microbiology", "seats": 5, "cutoff": "95%", "link": "https://www.sxccal.edu/"},
     {"name": "Scottish Church", "dept": "Chemistry", "seats": 15, "cutoff": "88%", "link": "https://www.scottishchurch.ac.in/"},
     {"name": "Heritage Institute", "dept": "CSE", "seats": 40, "cutoff": "WBJEE", "link": "https://www.heritageit.edu/"},
@@ -85,7 +81,6 @@ DATABASE = {
     {"name": "City College", "dept": "Commerce", "seats": 50, "cutoff": "75%", "link": "http://www.citycollegekolkata.org/"},
     {"name": "Bangabasi College", "dept": "Arts", "seats": 80, "cutoff": "65%", "link": "https://bangabasi.ac.in/"}
   ],
-  # --- SYLLABUS ---
   "syllabus_2025": [
     {"title": "Madhyamik 2025 Syllabus", "link": "https://wbbse.wb.gov.in"},
     {"title": "HS 2025 Science Syllabus", "link": "https://wbchse.nic.in"},
@@ -101,33 +96,34 @@ def main(page: ft.Page):
     page.padding = 0
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
-    
-    # Global state for AI Temperature
-    ai_temp = [0.5] 
 
-    # --- 2. LAUNCH APP LOGIC (SAFE MODE) ---
+    # 2. LOGIC
     def launch_app(e):
         try:
             page.clean()
             
-            # --- UTILS ---
+            # State
+            current_search = [""]
+            current_tab = [0]
+            
+            # Utils
             def handle_link(e):
                 if e.control.data: page.launch_url(e.control.data)
 
-            # --- CARD BUILDERS ---
+            # --- PRETTY UI BUILDERS (GRADIENTS & SHADOWS) ---
             def create_card(title, link, icon, color):
                 return ft.Container(
                     content=ft.Row([
                         ft.Container(content=ft.Icon(icon, color=color, size=24), padding=10, bgcolor=ft.colors.with_opacity(0.1, color), border_radius=10),
                         ft.Column([
-                            ft.Text(title, weight="bold", size=14, color="white", width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
-                            ft.Text("Official PDF", size=10, color="grey"),
+                            ft.Text(title, weight="bold", size=14, color="white", width=200, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.Text("Tap to Download", size=11, color="grey"),
                         ], expand=True, spacing=2),
-                        ft.IconButton(ft.icons.VISIBILITY, icon_color="grey", tooltip="View", data=link, on_click=handle_link),
-                        ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, tooltip="Download", data=link, on_click=handle_link)
+                        ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, data=link, on_click=handle_link)
                     ], alignment="spaceBetween"),
                     bgcolor="#1a1a1a", padding=10, border_radius=15, margin=ft.margin.only(bottom=8),
-                    shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
+                    shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black")),
+                    on_click=handle_link, data=link
                 )
 
             def create_college_card(item):
@@ -143,10 +139,10 @@ def main(page: ft.Page):
                             ft.Container(content=ft.Text(status, size=10, weight="bold", color="black"), 
                                          bgcolor=col, padding=5, border_radius=5)
                         ]),
-                        ft.Divider(height=5, color="#333"),
+                        ft.Divider(height=10, color="#333"),
                         ft.Row([
                             ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
-                            ft.ElevatedButton("Apply", height=25, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
+                            ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
                                               data=item['link'], on_click=handle_link)
                         ], alignment="spaceBetween")
                     ]),
@@ -154,184 +150,109 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
-            # --- AI LOGIC (ROBUST) ---
-            def generate_ai_response(prompt, temp):
-                try:
-                    full_prompt = (
-                        "You are a strict AI Tutor for West Bengal Board students (WBBSE/WBCHSE). "
-                        "Answer ONLY educational questions. Be concise. "
-                        f"User Question: {prompt}"
-                    )
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
-                    headers = {"Content-Type": "application/json"}
-                    data = {"contents": [{"parts": [{"text": full_prompt}]}], "generationConfig": {"temperature": temp}}
-                    
-                    response = requests.post(url, headers=headers, json=data, timeout=10) # 10s Timeout
-                    if response.status_code == 200:
-                        return response.json()['candidates'][0]['content']['parts'][0]['text']
-                    else:
-                        return f"AI Error: {response.status_code}"
-                except Exception as e:
-                    return f"Connection Failed: {str(e)}"
+            # --- DYNAMIC CONTENT LOADER (Search Enabled + ListView) ---
+            # KEY CHANGE: Using ListView here guarantees performance
+            body_content = ft.ListView(expand=True, padding=15, spacing=10)
 
-            chat_history = ft.Column(scroll="auto", expand=True, spacing=15)
-            
-            def send_ai(e):
-                q = ai_input.value
-                if not q: return
-                ai_input.value = ""
-                
-                chat_history.controls.append(
-                    ft.Container(
-                        content=ft.Text(q, color="white"),
-                        bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
-                        alignment=ft.alignment.center_right, margin=ft.margin.only(left=50)
-                    )
-                )
-                
-                loading = ft.Text("Thinking...", color="cyan", italic=True)
-                chat_history.controls.append(loading)
-                page.update()
-
-                def process():
-                    res = generate_ai_response(q, ai_temp[0])
-                    chat_history.controls.remove(loading)
-                    chat_history.controls.append(
-                        ft.Container(
-                            content=ft.Text(res, color="white"), # Using Text instead of Markdown for safety
-                            bgcolor="#004d40", padding=12, border_radius=ft.border_radius.only(12,12,12,0),
-                            margin=ft.margin.only(right=20)
-                        )
-                    )
-                    page.update()
-
-                threading.Thread(target=process).start()
-
-            ai_input = ft.TextField(hint_text="Ask AI...", expand=True, border_radius=20, 
-                                    bgcolor="#222", border_width=0, on_submit=send_ai)
-
-            # --- DRAWERS (SIDEBARS) ---
-            
-            # Left Drawer (Settings)
-            def change_temp(e):
-                ai_temp[0] = float(e.control.value)
-
-            page.drawer = ft.NavigationDrawer(
-                controls=[
-                    ft.Container(height=20),
-                    ft.Text("Settings", size=20, weight="bold", color="cyan", text_align="center"),
-                    ft.Divider(color="grey"),
-                    ft.Container(
-                        content=ft.Column([
-                            ft.Text("AI Creativity", size=14),
-                            ft.Slider(min=0.0, max=1.0, divisions=5, value=0.5, label="{value}", on_change=change_temp),
-                            ft.Text("Low = Strict | High = Creative", size=10, color="grey")
-                        ]), padding=20
-                    )
-                ], bgcolor="#111"
-            )
-
-            # Right Drawer (History - Simple Clear)
-            def clear_chat(e):
-                chat_history.controls.clear()
-                page.close_end_drawer()
-                page.update()
-
-            page.end_drawer = ft.NavigationDrawer(
-                controls=[
-                    ft.Container(height=20),
-                    ft.Text("History", size=20, weight="bold", color="orange", text_align="center"),
-                    ft.Divider(color="grey"),
-                    ft.ElevatedButton("Clear Chat", bgcolor="red", color="white", on_click=clear_chat)
-                ], bgcolor="#111"
-            )
-
-            # --- VIEWS ---
-            ai_view = ft.Column([
-                ft.Container(
-                    content=ft.Row([
-                        ft.IconButton(ft.icons.SETTINGS, icon_color="grey", on_click=lambda e: page.open_drawer()),
-                        ft.Text("AI TUTOR", weight="bold", size=16, color="cyan"),
-                        ft.IconButton(ft.icons.DELETE_SWEEP, icon_color="grey", on_click=lambda e: page.open_end_drawer())
-                    ], alignment="spaceBetween"),
-                    padding=10, bgcolor="#111"
-                ),
-                ft.Container(content=chat_history, expand=True, padding=10),
-                ft.Container(content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND, icon_color="cyan", on_click=send_ai)]), padding=10, bgcolor="#111")
-            ], expand=True)
-
-            # --- CONTENT LOADER (LAZY) ---
-            body_content = ft.Column(scroll="auto", padding=15, expand=True)
-            current_tab = [0]
-            
             def update_view():
                 body_content.controls.clear()
+                
                 idx = current_tab[0]
+                query = current_search[0].lower()
+                def match(text): return query in text.lower()
 
                 if idx == 0: # Books
                     if "books_hs" in DATABASE:
-                        body_content.controls.append(ft.Text("HIGHER SECONDARY (11-12)", color="cyan", weight="bold"))
-                        for x in DATABASE["books_hs"]: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
+                        # Only show header if matching items exist
+                        if any(match(x['title']) for x in DATABASE["books_hs"]):
+                            body_content.controls.append(ft.Text("HIGHER SECONDARY (11-12)", color="cyan", weight="bold"))
+                            for x in DATABASE["books_hs"]: 
+                                if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
+
                     for k in ["books_class_10", "books_class_9", "books_class_8"]:
                         if k in DATABASE:
-                            body_content.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
-                            for x in DATABASE[k]: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
+                            if any(match(x['title']) for x in DATABASE[k]):
+                                body_content.controls.append(ft.Text(k.replace("books_", "CLASS ").upper(), color="orange", weight="bold"))
+                                for x in DATABASE[k]: 
+                                    if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
                 elif idx == 1: # Papers
                     for k in ["papers_2024", "papers_2023", "papers_2022"]:
                         if k in DATABASE:
-                            body_content.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
-                            for x in DATABASE[k]: body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
+                            if any(match(x['title']) for x in DATABASE[k]):
+                                body_content.controls.append(ft.Text(k.replace("papers_", "YEAR ").upper(), color="cyan", weight="bold"))
+                                for x in DATABASE[k]: 
+                                    if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
                 elif idx == 2: # Syllabus
                     body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
-                    for x in DATABASE.get("syllabus_2025", []): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
+                    for x in DATABASE["syllabus_2025"]: 
+                        if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
                 elif idx == 3: # Colleges
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
-                    for x in DATABASE.get("colleges", []): body_content.controls.append(create_college_card(x))
+                    for x in DATABASE["colleges"]:
+                        if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
+
+                # Empty State
+                if not body_content.controls:
+                    body_content.controls.append(ft.Text("No results found.", color="grey", italic=True))
                 
                 page.update()
 
-            # --- NAVIGATION ---
+            # --- UI LAYOUT ---
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
-                if e.control.selected_index == 4:
-                    main_layout.content = ai_view
-                else:
-                    main_layout.content = body_content
-                    update_view()
-                page.update()
+                update_view()
+
+            def on_search(e):
+                current_search[0] = e.control.value
+                update_view()
+
+            # Premium Header
+            header = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
+                        ft.Text("WB-NEXUS", size=22, weight="bold"),
+                        ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
+                    ], alignment="spaceBetween"),
+                    ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
+                                 border_radius=20, bgcolor="#222", border_width=0, on_change=on_search)
+                ]),
+                padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
+                gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#111", "#1a1a1a"]),
+                border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
+            )
 
             nav_bar = ft.NavigationBar(
                 selected_index=0,
                 on_change=on_nav,
-                bgcolor="#0a0a0a",
+                bgcolor="#111",
                 destinations=[
                     ft.NavigationDestination(icon=ft.icons.BOOK, label="Books"),
                     ft.NavigationDestination(icon=ft.icons.DESCRIPTION, label="Papers"),
                     ft.NavigationDestination(icon=ft.icons.LIST, label="Syllabus"),
                     ft.NavigationDestination(icon=ft.icons.SCHOOL, label="Colleges"),
-                    ft.NavigationDestination(icon=ft.icons.AUTO_AWESOME, label="AI Tutor"),
                 ]
             )
 
-            header = ft.Container(
-                content=ft.Row([
-                    ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
-                    ft.Text("WB-NEXUS", size=22, weight="bold")
-                ], alignment="center"),
-                padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
-                bgcolor="#111", border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
+            # About Dialog
+            info_dialog = ft.AlertDialog(
+                title=ft.Text("About WB-NEXUS"),
+                content=ft.Text("Version 1.0\nDeveloped for WB Students.\n\nFree & Open Source."),
             )
 
-            main_layout = ft.Container(content=body_content, expand=True)
+            # Assemble
             update_view() # Initial Load
-            page.add(ft.Column([header, main_layout], expand=True, spacing=0), nav_bar)
+            page.add(ft.Column([header, body_content], expand=True, spacing=0), nav_bar)
 
         except Exception as err:
             page.clean()
-            page.add(ft.Text(f"CRASH ERROR: {err}", color="red", size=20))
+            page.add(ft.Column([
+                ft.Text("CRASH DETECTED", color="red", size=20, weight="bold"),
+                ft.Text(f"Error: {str(err)}", color="white")
+            ], alignment="center", horizontal_alignment="center"))
 
     # --- 3. STARTUP SCREEN (SAFE) ---
     start_btn = ft.Container(
