@@ -2,9 +2,9 @@ import flet as ft
 import requests
 import threading
 import json
+import time
 
 # --- 1. CONFIGURATION ---
-# We use your key with the Stable 'gemini-pro' model to fix the 404 error
 API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g" 
 
 # --- 2. THE MASTER DATABASE ---
@@ -99,7 +99,7 @@ def main(page: ft.Page):
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # 2. CLICK-TO-START LOGIC
+    # 2. APP LOGIC (SAFE START)
     def launch_app(e):
         try:
             page.clean()
@@ -108,13 +108,19 @@ def main(page: ft.Page):
             ai_temp = [0.5]
             current_api_key = [API_KEY]
             saved_chats = page.client_storage.get("saved_chats") or []
-            
-            current_search = [""]
             current_tab = [0]
+            current_search = [""]
             
             # --- UTILS ---
             def handle_link(e):
                 if e.control.data: page.launch_url(e.control.data)
+                
+            def share_app(e):
+                # Copies link to clipboard (Simulated Share)
+                page.set_clipboard("Check out WB-NEXUS App: https://your-drive-link-here")
+                page.snack_bar = ft.SnackBar(ft.Text("Link copied! Share it with friends."))
+                page.snack_bar.open = True
+                page.update()
 
             # --- UI BUILDERS ---
             def create_card(title, link, icon, color):
@@ -158,7 +164,7 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
-            # --- AI LOGIC (FIXED: Using gemini-pro for stability) ---
+            # --- AI LOGIC (FIXED ENDPOINT) ---
             def generate_ai_response(prompt, temp):
                 try:
                     full_prompt = (
@@ -169,15 +175,15 @@ def main(page: ft.Page):
                         f"User Question: {prompt}"
                     )
                     
-                    # FIX: Using 'gemini-pro' which is more reliable for free tier REST API
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={current_api_key[0]}"
+                    # Using gemini-1.5-flash for speed and stability
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_api_key[0]}"
                     headers = {"Content-Type": "application/json"}
                     data = {
                         "contents": [{"parts": [{"text": full_prompt}]}], 
                         "generationConfig": {"temperature": temp}
                     }
                     
-                    response = requests.post(url, headers=headers, json=data, timeout=15)
+                    response = requests.post(url, headers=headers, json=data, timeout=10)
                     
                     if response.status_code == 200:
                         return response.json()['candidates'][0]['content']['parts'][0]['text']
@@ -186,82 +192,15 @@ def main(page: ft.Page):
                 except Exception as e:
                     return f"Connection Failed: {str(e)}"
 
-            # --- DRAWERS (SIDEBARS) ---
-            
-            # Left Drawer (Settings)
-            def update_key(e):
-                current_api_key[0] = e.control.value
-                page.client_storage.set("api_key", e.control.value)
-            
-            def update_temp(e):
-                ai_temp[0] = float(e.control.value)
-
-            page.drawer = ft.NavigationDrawer(
-                controls=[
-                    ft.Container(height=30),
-                    ft.Row([ft.Icon(ft.icons.SETTINGS, color="cyan"), ft.Text("Settings", size=20, weight="bold")], alignment="center"),
-                    ft.Divider(color="grey"),
-                    ft.Container(content=ft.Column([
-                        ft.Text("Custom API Key (Optional)", size=14, weight="bold"),
-                        ft.TextField(hint_text="Paste Gemini Key", password=True, can_reveal_password=True, on_change=update_key, height=40, text_size=12),
-                        ft.Container(height=10),
-                        ft.Text("Creativity Level", size=14, weight="bold"),
-                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=update_temp),
-                        ft.Text("0.0 = Strict | 1.0 = Creative", size=11, color="grey")
-                    ]), padding=20)
-                ], bgcolor="#161616"
-            )
-
-            # Right Drawer (History)
-            history_col = ft.Column()
-
-            def delete_chat_item(idx):
-                if 0 <= idx < len(saved_chats):
-                    del saved_chats[idx]
-                    page.client_storage.set("saved_chats", saved_chats)
-                    update_history_drawer()
-                    page.update()
-
-            def update_history_drawer():
-                history_col.controls.clear()
-                if not saved_chats:
-                    history_col.controls.append(ft.Text("No saved chats.", color="grey"))
-                else:
-                    for i, chat in enumerate(saved_chats):
-                        history_col.controls.append(
-                            ft.Container(
-                                content=ft.Row([
-                                    ft.Column([
-                                        ft.Text(chat.get('title', 'Unknown'), weight="bold", size=12, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, width=150),
-                                        ft.Text(chat.get('content', '')[:30]+"...", size=10, color="grey")
-                                    ], expand=True),
-                                    ft.IconButton(ft.icons.DELETE_OUTLINE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat_item(x))
-                                ], alignment="spaceBetween"),
-                                bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
-                            )
-                        )
-
-            update_history_drawer()
-
-            page.end_drawer = ft.NavigationDrawer(
-                controls=[
-                    ft.Container(height=30),
-                    ft.Row([ft.Icon(ft.icons.HISTORY, color="orange"), ft.Text("Saved Topics", size=20, weight="bold")], alignment="center"),
-                    ft.Divider(color="grey"),
-                    ft.Container(content=history_col, padding=10, expand=True)
-                ], bgcolor="#161616"
-            )
-
-            # --- AI CHAT VIEW ---
+            # --- AI VIEW ---
             chat_list = ft.ListView(expand=True, spacing=15, padding=10)
-            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
-                                    bgcolor="#222", border_width=0)
             
             def send_ai(e):
                 q = ai_input.value
                 if not q: return
                 ai_input.value = ""
                 
+                # User Bubble
                 chat_list.controls.append(ft.Container(
                     content=ft.Text(q, color="white"),
                     bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
@@ -276,27 +215,77 @@ def main(page: ft.Page):
                     res = generate_ai_response(q, ai_temp[0])
                     chat_list.controls.remove(loading)
                     chat_list.controls.append(ft.Container(
-                        content=ft.Text(res, color="white", selectable=True), # Text is safer than Markdown for crashes
+                        content=ft.Text(res, color="white", selectable=True),
                         bgcolor="#004d40", padding=12, border_radius=ft.border_radius.only(12,12,12,0),
                         margin=ft.margin.only(right=20)
                     ))
                     
-                    # Auto-Save to History
-                    saved_chats.insert(0, {"title": q, "content": res})
-                    # Keep only last 20 chats
-                    if len(saved_chats) > 20: saved_chats.pop()
+                    # Save History
+                    saved_chats.insert(0, {"title": q[:30], "content": res[:200]})
                     page.client_storage.set("saved_chats", saved_chats)
                     update_history_drawer()
                     page.update()
 
                 threading.Thread(target=process).start()
 
-            ai_input.on_submit = send_ai
+            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
+                                    bgcolor="#222", border_width=0, on_submit=send_ai)
+
+            # --- DRAWERS ---
+            def change_temp(e):
+                ai_temp[0] = float(e.control.value)
+                page.client_storage.set("ai_temp", ai_temp[0])
+
+            page.drawer = ft.NavigationDrawer(
+                controls=[
+                    ft.Container(height=30),
+                    ft.Text("AI Settings", size=20, weight="bold", color="cyan", text_align="center"),
+                    ft.Divider(),
+                    ft.Container(content=ft.Column([
+                        ft.Text("Creativity", size=14),
+                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=change_temp),
+                        ft.Text("Low = Strict | High = Creative", size=11, color="grey")
+                    ]), padding=20)
+                ], bgcolor="#111"
+            )
+
+            history_col = ft.Column()
+            def delete_chat(idx):
+                del saved_chats[idx]
+                page.client_storage.set("saved_chats", saved_chats)
+                update_history_drawer()
+                page.update()
+
+            def update_history_drawer():
+                history_col.controls.clear()
+                if not saved_chats:
+                    history_col.controls.append(ft.Text("No saved chats.", color="grey"))
+                else:
+                    for i, chat in enumerate(saved_chats):
+                        history_col.controls.append(
+                            ft.Container(
+                                content=ft.Row([
+                                    ft.Column([ft.Text(chat['title'], weight="bold", size=12), ft.Text(chat['content'][:30]+"...", size=10, color="grey")], expand=True),
+                                    ft.IconButton(ft.icons.DELETE_OUTLINE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat(x))
+                                ], alignment="spaceBetween"),
+                                bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
+                            )
+                        )
+
+            update_history_drawer()
+            page.end_drawer = ft.NavigationDrawer(
+                controls=[
+                    ft.Container(height=30),
+                    ft.Text("History", size=20, weight="bold", color="orange", text_align="center"),
+                    ft.Divider(),
+                    ft.Container(content=history_col, padding=10, expand=True)
+                ], bgcolor="#111"
+            )
 
             ai_view = ft.Column([
                 ft.Container(
                     content=ft.Row([
-                        ft.IconButton(ft.icons.TUNE, icon_color="grey", on_click=lambda e: page.show_drawer(page.drawer)),
+                        ft.IconButton(ft.icons.SETTINGS, icon_color="grey", on_click=lambda e: page.show_drawer(page.drawer)),
                         ft.Text("AI TUTOR", weight="bold", size=16, color="cyan"),
                         ft.IconButton(ft.icons.HISTORY, icon_color="grey", on_click=lambda e: page.show_end_drawer(page.end_drawer))
                     ], alignment="spaceBetween"),
@@ -309,30 +298,14 @@ def main(page: ft.Page):
                 )
             ], expand=True)
 
-            # --- MAIN CONTENT LOADER ---
+            # --- DYNAMIC CONTENT ---
+            # Using ListView to prevent Black Screen
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
-            
-            # Header with Search
-            search_bar = ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
-                                     border_radius=20, bgcolor="#222", border_width=0)
-            
-            header_row = ft.Row([
-                ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
-                ft.Text("WB-NEXUS", size=22, weight="bold"),
-                ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
-            ], alignment="spaceBetween")
-
-            header_container = ft.Container(
-                content=ft.Column([header_row, search_bar]),
-                padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
-                gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#111", "#1a1a1a"]),
-                border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
-            )
 
             def update_view():
                 body_content.controls.clear()
                 idx = current_tab[0]
-                query = search_bar.value.lower() if search_bar.value else ""
+                query = current_search[0].lower()
                 def match(text): return query in text.lower()
 
                 if idx == 0: # Books
@@ -341,6 +314,7 @@ def main(page: ft.Page):
                             body_content.controls.append(ft.Text("HIGHER SECONDARY (11-12)", color="cyan", weight="bold"))
                             for x in DATABASE["books_hs"]: 
                                 if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
+                    
                     for k in ["books_class_10", "books_class_9", "books_class_8"]:
                         if k in DATABASE:
                             if any(match(x['title']) for x in DATABASE[k]):
@@ -368,14 +342,10 @@ def main(page: ft.Page):
                 
                 page.update()
 
-            search_bar.on_change = lambda e: update_view()
-
-            # --- NAVIGATION ---
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
                 if e.control.selected_index == 4: # AI Tab
                     main_layout.content = ai_view
-                    # Hide search bar container when in AI mode
                     header_container.visible = False
                 else:
                     main_layout.content = body_content
@@ -383,6 +353,11 @@ def main(page: ft.Page):
                     update_view()
                 page.update()
 
+            def on_search(e):
+                current_search[0] = e.control.value
+                update_view()
+
+            # --- LAYOUT ---
             nav_bar = ft.NavigationBar(
                 selected_index=0,
                 on_change=on_nav,
@@ -396,7 +371,34 @@ def main(page: ft.Page):
                 ]
             )
 
-            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Version 1.0\nDeveloped for WB Students."))
+            # About Dialog
+            info_dialog = ft.AlertDialog(
+                title=ft.Text("About WB-NEXUS"),
+                content=ft.Column([
+                    ft.Text("Version: 1.0 (Platinum)"),
+                    ft.Text("Dev: ZEROS"),
+                    ft.Text("Database: 50+ Books, 3 Years Papers"),
+                    ft.Text("Updates: Check GitHub"),
+                ], height=100)
+            )
+
+            header_container = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
+                        ft.Text("WB-NEXUS", size=22, weight="bold"),
+                        ft.Row([
+                            ft.IconButton(icon=ft.icons.SHARE, icon_color="grey", on_click=share_app),
+                            ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
+                        ])
+                    ], alignment="spaceBetween"),
+                    ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
+                                 border_radius=20, bgcolor="#222", border_width=0, on_change=on_search)
+                ]),
+                padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
+                gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#111", "#1a1a1a"]),
+                border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
+            )
 
             main_layout = ft.Container(content=body_content, expand=True)
             update_view() 
@@ -404,9 +406,12 @@ def main(page: ft.Page):
 
         except Exception as err:
             page.clean()
-            page.add(ft.Column([ft.Text("CRASH DETECTED", color="red"), ft.Text(str(err))]))
+            page.add(ft.Column([
+                ft.Text("CRASH DETECTED", color="red", size=20, weight="bold"),
+                ft.Text(f"Error: {str(err)}", color="white")
+            ], alignment="center", horizontal_alignment="center"))
 
-    # --- 3. STARTUP SCREEN ---
+    # --- 3. STARTUP SCREEN (SAFE) ---
     start_btn = ft.Container(
         content=ft.Column([
             ft.Icon(name=ft.icons.SHIELD_MOON, size=100, color="cyan"),
@@ -416,7 +421,9 @@ def main(page: ft.Page):
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
         ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
+        alignment=ft.alignment.center,
+        expand=True,
+        bgcolor="#0a0a0a"
     )
 
     page.add(start_btn)
