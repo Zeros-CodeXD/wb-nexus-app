@@ -2,10 +2,10 @@ import flet as ft
 import requests
 import threading
 import json
-import time
 
 # --- 1. CONFIGURATION ---
-DEFAULT_API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g" 
+# We use your key with the Stable 'gemini-pro' model to fix the 404 error
+API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g" 
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
@@ -43,8 +43,8 @@ DATABASE = {
     {"title": "2024 Bengali Paper", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
     {"title": "2024 English Paper", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
     {"title": "2024 Math Paper", "link": "https://drive.google.com/file/d/1K21V1xGZEAFGXsGjojFzTo74KqpDFmC-/view"},
-    {"title": "2024 Physical Science", "link": "https://drive.google.com/file/d/1isrdJmWektP7UNi4heeYF52jcuzHHFqF/view"},
-    {"title": "2024 Life Science", "link": "https://drive.google.com/file/d/10uMrtr3cOujv_e07XkaliaEx16Gv9XGf/view"},
+    {"title": "2024 Phy Sci", "link": "https://drive.google.com/file/d/1isrdJmWektP7UNi4heeYF52jcuzHHFqF/view"},
+    {"title": "2024 Life Sci", "link": "https://drive.google.com/file/d/10uMrtr3cOujv_e07XkaliaEx16Gv9XGf/view"},
     {"title": "2024 History", "link": "https://drive.google.com/file/d/1i1C-plnjdPTpHN551J3xHlcxFzkHRQNE/view"},
     {"title": "2024 Geography", "link": "https://drive.google.com/file/d/1M3oyhEVcA_XW6_-X5L4l1eAhEJTPDh41/view"}
   ],
@@ -52,8 +52,8 @@ DATABASE = {
     {"title": "2023 Bengali Paper", "link": "https://drive.google.com/file/d/1Eijq8S0kYZG6pZK3cwoO5pcNcIxslH_W/view"},
     {"title": "2023 English Paper", "link": "https://drive.google.com/file/d/1XnGDf2ekn4ljc5LP4_kpRPFXkXrhDuHs/view"},
     {"title": "2023 Math Paper", "link": "https://drive.google.com/file/d/1q8ev-LLr6Ry7jwIWY3M3n3oO3V2rehx-/view"},
-    {"title": "2023 Physical Science", "link": "https://drive.google.com/file/d/1GvH9M-sEWNIX9vDM2GOKmFx1OZyCHHlO/view"},
-    {"title": "2023 Life Science", "link": "https://drive.google.com/file/d/1LywHj2UH2mc2qrJD4KPPKvYbsfwAOTYx/view"},
+    {"title": "2023 Phy Sci", "link": "https://drive.google.com/file/d/1GvH9M-sEWNIX9vDM2GOKmFx1OZyCHHlO/view"},
+    {"title": "2023 Life Sci", "link": "https://drive.google.com/file/d/1LywHj2UH2mc2qrJD4KPPKvYbsfwAOTYx/view"},
     {"title": "2023 History", "link": "https://drive.google.com/file/d/1LSiZV1yY4QtUPq8Xu8HWFxCDOpScnO7y/view"},
     {"title": "2023 Geography", "link": "https://drive.google.com/file/d/1shP3OooAaWdeoM2oAnxWR92TEw5uU3QF/view"}
   ],
@@ -62,7 +62,7 @@ DATABASE = {
     {"title": "2022 English Paper", "link": "https://drive.google.com/file/d/1vuK6W9evHONNvHmk2nUOxvIYw6BdCCtr/view"},
     {"title": "2022 Math Paper", "link": "https://drive.google.com/file/d/1XDwjyeTHDkRnXjJatqMjG-ZtFNEb3hBW/view"},
     {"title": "2022 Phy Sci", "link": "https://drive.google.com/file/d/1sYrcwl5gLVCNEFEcrR4QypBsBe78IQ9g/view"},
-    {"title": "2022 Life Science", "link": "https://drive.google.com/file/d/1zNaUAAEklNCKYdv_dRny_gyfotg5eGOM/view"},
+    {"title": "2022 Life Sci", "link": "https://drive.google.com/file/d/1zNaUAAEklNCKYdv_dRny_gyfotg5eGOM/view"},
     {"title": "2022 History", "link": "https://drive.google.com/file/d/1ZW4c3u6-G9gPXbMxAO1MQk6-_kh9r05g/view"},
     {"title": "2022 Geography", "link": "https://drive.google.com/file/d/19QWjSKary4IXrv9Bwa0oyADDTXmc3dPA/view"}
   ],
@@ -105,15 +105,9 @@ def main(page: ft.Page):
             page.clean()
             
             # --- GLOBAL STATE ---
-            # Retrieve saved key or use default
-            saved_key = page.client_storage.get("api_key")
-            current_api_key = [saved_key if saved_key else DEFAULT_API_KEY]
-            
-            # Retrieve chat history
+            ai_temp = [0.5]
+            current_api_key = [API_KEY]
             saved_chats = page.client_storage.get("saved_chats") or []
-            
-            # Retrieve temp
-            ai_temp = [page.client_storage.get("ai_temp") or 0.5]
             
             current_search = [""]
             current_tab = [0]
@@ -122,7 +116,7 @@ def main(page: ft.Page):
             def handle_link(e):
                 if e.control.data: page.launch_url(e.control.data)
 
-            # --- CARD BUILDERS ---
+            # --- UI BUILDERS ---
             def create_card(title, link, icon, color):
                 return ft.Container(
                     content=ft.Row([
@@ -131,6 +125,7 @@ def main(page: ft.Page):
                             ft.Text(title, weight="bold", size=14, color="white", width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
                             ft.Text("Official PDF", size=10, color="grey"),
                         ], expand=True, spacing=2),
+                        
                         ft.IconButton(ft.icons.VISIBILITY, icon_color="grey", tooltip="View", data=link, on_click=handle_link),
                         ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, tooltip="Download", data=link, on_click=handle_link)
                     ], alignment="spaceBetween"),
@@ -163,7 +158,7 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
-            # --- AI LOGIC (FIXED 404 & STRUCTURE) ---
+            # --- AI LOGIC (FIXED: Using gemini-pro for stability) ---
             def generate_ai_response(prompt, temp):
                 try:
                     full_prompt = (
@@ -174,8 +169,8 @@ def main(page: ft.Page):
                         f"User Question: {prompt}"
                     )
                     
-                    # URL structure for Gemini 1.5 Flash (Corrected)
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_api_key[0]}"
+                    # FIX: Using 'gemini-pro' which is more reliable for free tier REST API
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={current_api_key[0]}"
                     headers = {"Content-Type": "application/json"}
                     data = {
                         "contents": [{"parts": [{"text": full_prompt}]}], 
@@ -187,11 +182,77 @@ def main(page: ft.Page):
                     if response.status_code == 200:
                         return response.json()['candidates'][0]['content']['parts'][0]['text']
                     else:
-                        return f"API Error: {response.status_code} - {response.text}"
+                        return f"AI Error {response.status_code}: Please check your internet or API Key."
                 except Exception as e:
                     return f"Connection Failed: {str(e)}"
 
-            # --- AI UI COMPONENTS ---
+            # --- DRAWERS (SIDEBARS) ---
+            
+            # Left Drawer (Settings)
+            def update_key(e):
+                current_api_key[0] = e.control.value
+                page.client_storage.set("api_key", e.control.value)
+            
+            def update_temp(e):
+                ai_temp[0] = float(e.control.value)
+
+            page.drawer = ft.NavigationDrawer(
+                controls=[
+                    ft.Container(height=30),
+                    ft.Row([ft.Icon(ft.icons.SETTINGS, color="cyan"), ft.Text("Settings", size=20, weight="bold")], alignment="center"),
+                    ft.Divider(color="grey"),
+                    ft.Container(content=ft.Column([
+                        ft.Text("Custom API Key (Optional)", size=14, weight="bold"),
+                        ft.TextField(hint_text="Paste Gemini Key", password=True, can_reveal_password=True, on_change=update_key, height=40, text_size=12),
+                        ft.Container(height=10),
+                        ft.Text("Creativity Level", size=14, weight="bold"),
+                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=update_temp),
+                        ft.Text("0.0 = Strict | 1.0 = Creative", size=11, color="grey")
+                    ]), padding=20)
+                ], bgcolor="#161616"
+            )
+
+            # Right Drawer (History)
+            history_col = ft.Column()
+
+            def delete_chat_item(idx):
+                if 0 <= idx < len(saved_chats):
+                    del saved_chats[idx]
+                    page.client_storage.set("saved_chats", saved_chats)
+                    update_history_drawer()
+                    page.update()
+
+            def update_history_drawer():
+                history_col.controls.clear()
+                if not saved_chats:
+                    history_col.controls.append(ft.Text("No saved chats.", color="grey"))
+                else:
+                    for i, chat in enumerate(saved_chats):
+                        history_col.controls.append(
+                            ft.Container(
+                                content=ft.Row([
+                                    ft.Column([
+                                        ft.Text(chat.get('title', 'Unknown'), weight="bold", size=12, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, width=150),
+                                        ft.Text(chat.get('content', '')[:30]+"...", size=10, color="grey")
+                                    ], expand=True),
+                                    ft.IconButton(ft.icons.DELETE_OUTLINE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat_item(x))
+                                ], alignment="spaceBetween"),
+                                bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
+                            )
+                        )
+
+            update_history_drawer()
+
+            page.end_drawer = ft.NavigationDrawer(
+                controls=[
+                    ft.Container(height=30),
+                    ft.Row([ft.Icon(ft.icons.HISTORY, color="orange"), ft.Text("Saved Topics", size=20, weight="bold")], alignment="center"),
+                    ft.Divider(color="grey"),
+                    ft.Container(content=history_col, padding=10, expand=True)
+                ], bgcolor="#161616"
+            )
+
+            # --- AI CHAT VIEW ---
             chat_list = ft.ListView(expand=True, spacing=15, padding=10)
             ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
                                     bgcolor="#222", border_width=0)
@@ -201,7 +262,6 @@ def main(page: ft.Page):
                 if not q: return
                 ai_input.value = ""
                 
-                # User Bubble
                 chat_list.controls.append(ft.Container(
                     content=ft.Text(q, color="white"),
                     bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
@@ -216,95 +276,29 @@ def main(page: ft.Page):
                     res = generate_ai_response(q, ai_temp[0])
                     chat_list.controls.remove(loading)
                     chat_list.controls.append(ft.Container(
-                        content=ft.Text(res, color="white", selectable=True),
+                        content=ft.Text(res, color="white", selectable=True), # Text is safer than Markdown for crashes
                         bgcolor="#004d40", padding=12, border_radius=ft.border_radius.only(12,12,12,0),
                         margin=ft.margin.only(right=20)
                     ))
                     
-                    # Auto-save session snippet
-                    saved_chats.insert(0, {"title": q[:30], "content": res[:200]})
+                    # Auto-Save to History
+                    saved_chats.insert(0, {"title": q, "content": res})
+                    # Keep only last 20 chats
+                    if len(saved_chats) > 20: saved_chats.pop()
                     page.client_storage.set("saved_chats", saved_chats)
-                    update_history_drawer() # Refresh drawer
+                    update_history_drawer()
                     page.update()
 
                 threading.Thread(target=process).start()
-            
+
             ai_input.on_submit = send_ai
 
-            # --- DRAWERS ---
-            
-            # Left Drawer (Settings)
-            def update_key(e):
-                current_api_key[0] = e.control.value
-                page.client_storage.set("api_key", e.control.value)
-            
-            def update_temp(e):
-                ai_temp[0] = float(e.control.value)
-                page.client_storage.set("ai_temp", ai_temp[0])
-
-            left_drawer = ft.NavigationDrawer(
-                controls=[
-                    ft.Container(height=20),
-                    ft.Text("Settings", size=20, weight="bold", color="cyan", text_align="center"),
-                    ft.Divider(),
-                    ft.Container(content=ft.Column([
-                        ft.Text("API Key (Optional)", size=14),
-                        ft.TextField(value=current_api_key[0], password=True, can_reveal_password=True, on_change=update_key, height=40, text_size=12),
-                        ft.Container(height=10),
-                        ft.Text("Creativity Level", size=14),
-                        ft.Slider(min=0.0, max=1.0, divisions=10, value=ai_temp[0], on_change=update_temp),
-                        ft.Text("Low = Strict | High = Creative", size=10, color="grey")
-                    ]), padding=20)
-                ], bgcolor="#111"
-            )
-
-            # Right Drawer (History)
-            history_col = ft.Column()
-
-            def delete_chat(idx):
-                del saved_chats[idx]
-                page.client_storage.set("saved_chats", saved_chats)
-                update_history_drawer()
-                page.update()
-
-            def update_history_drawer():
-                history_col.controls.clear()
-                for i, chat in enumerate(saved_chats):
-                    history_col.controls.append(
-                        ft.Container(
-                            content=ft.Row([
-                                ft.Column([
-                                    ft.Text(chat['title'], weight="bold", size=12, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                                    ft.Text(chat['content'][:40]+"...", size=10, color="grey")
-                                ], expand=True),
-                                ft.PopupMenuButton(
-                                    items=[
-                                        ft.PopupMenuItem(text="Delete", on_click=lambda _, x=i: delete_chat(x))
-                                    ]
-                                )
-                            ]),
-                            bgcolor="#222", padding=10, border_radius=5, margin=ft.margin.only(bottom=5)
-                        )
-                    )
-
-            update_history_drawer() # Initial load
-
-            right_drawer = ft.NavigationDrawer(
-                controls=[
-                    ft.Container(height=20),
-                    ft.Text("Saved Chats", size=20, weight="bold", color="orange", text_align="center"),
-                    ft.Divider(),
-                    ft.Container(content=history_col, padding=10, expand=True)
-                ], bgcolor="#111"
-            )
-
-            # --- AI VIEW LAYOUT ---
             ai_view = ft.Column([
                 ft.Container(
                     content=ft.Row([
-                        ft.IconButton(ft.icons.SETTINGS, icon_color="grey", on_click=lambda e: page.open_drawer(left_drawer)),
+                        ft.IconButton(ft.icons.TUNE, icon_color="grey", on_click=lambda e: page.show_drawer(page.drawer)),
                         ft.Text("AI TUTOR", weight="bold", size=16, color="cyan"),
-                        ft.IconButton(ft.icons.HISTORY, icon_color="grey", on_click=lambda e: page.open_end_drawer(right_drawer))
+                        ft.IconButton(ft.icons.HISTORY, icon_color="grey", on_click=lambda e: page.show_end_drawer(page.end_drawer))
                     ], alignment="spaceBetween"),
                     padding=10, bgcolor="#111"
                 ),
@@ -315,18 +309,17 @@ def main(page: ft.Page):
                 )
             ], expand=True)
 
-            # --- DYNAMIC CONTENT LOADER ---
+            # --- MAIN CONTENT LOADER ---
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
             
-            # Header Components (Search Bar)
+            # Header with Search
             search_bar = ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
                                      border_radius=20, bgcolor="#222", border_width=0)
             
-            # Top Header (Dynamic)
             header_row = ft.Row([
                 ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
                 ft.Text("WB-NEXUS", size=22, weight="bold"),
-                ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey") # Info dialog placeholder
+                ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
             ], alignment="spaceBetween")
 
             header_container = ft.Container(
@@ -372,9 +365,6 @@ def main(page: ft.Page):
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
                     for x in DATABASE.get("colleges", []):
                         if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
-
-                if not body_content.controls:
-                    body_content.controls.append(ft.Text("No results found.", color="grey", italic=True))
                 
                 page.update()
 
@@ -384,12 +374,12 @@ def main(page: ft.Page):
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
                 if e.control.selected_index == 4: # AI Tab
-                    # HIDE SEARCH BAR for AI Tab
                     main_layout.content = ai_view
-                    header_container.content.controls[1].visible = False # Hide search input
+                    # Hide search bar container when in AI mode
+                    header_container.visible = False
                 else:
                     main_layout.content = body_content
-                    header_container.content.controls[1].visible = True # Show search input
+                    header_container.visible = True
                     update_view()
                 page.update()
 
@@ -406,17 +396,15 @@ def main(page: ft.Page):
                 ]
             )
 
-            # Assemble
+            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Version 1.0\nDeveloped for WB Students."))
+
             main_layout = ft.Container(content=body_content, expand=True)
             update_view() 
             page.add(ft.Column([header_container, main_layout], expand=True, spacing=0), nav_bar)
 
         except Exception as err:
             page.clean()
-            page.add(ft.Column([
-                ft.Text("CRASH DETECTED", color="red", size=20, weight="bold"),
-                ft.Text(f"Error: {str(err)}", color="white")
-            ], alignment="center", horizontal_alignment="center"))
+            page.add(ft.Column([ft.Text("CRASH DETECTED", color="red"), ft.Text(str(err))]))
 
     # --- 3. STARTUP SCREEN ---
     start_btn = ft.Container(
@@ -428,9 +416,7 @@ def main(page: ft.Page):
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
         ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center,
-        expand=True,
-        bgcolor="#0a0a0a"
+        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
     )
 
     page.add(start_btn)
