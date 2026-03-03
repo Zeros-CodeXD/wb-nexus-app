@@ -2,10 +2,10 @@ import flet as ft
 import requests
 import threading
 import json
-import time
 
 # --- 1. CONFIGURATION ---
-API_KEY = "AIzaSyBt0LXmELJ47vxrGQGz3q3VWAd2XC8TZ1g" 
+# NEW API KEY (Updated)
+API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
@@ -116,9 +116,8 @@ def main(page: ft.Page):
                 if e.control.data: page.launch_url(e.control.data)
                 
             def share_app(e):
-                # Copies link to clipboard (Simulated Share)
-                page.set_clipboard("Check out WB-NEXUS App: https://your-drive-link-here")
-                page.snack_bar = ft.SnackBar(ft.Text("Link copied! Share it with friends."))
+                page.set_clipboard("Check out WB-NEXUS!")
+                page.snack_bar = ft.SnackBar(ft.Text("Link copied!"))
                 page.snack_bar.open = True
                 page.update()
 
@@ -164,18 +163,17 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
-            # --- AI LOGIC (FIXED ENDPOINT) ---
+            # --- AI LOGIC (FIXED URL) ---
             def generate_ai_response(prompt, temp):
                 try:
                     full_prompt = (
                         "You are a strict AI Tutor for West Bengal Board students (WBBSE/WBCHSE). "
                         "Your ONLY purpose is to answer educational questions, suggest topics, and help with exams. "
-                        "If the user asks about ANYTHING else (movies, dating, politics, violence, jokes), "
-                        "refuse by saying: 'I am an educational AI. I only discuss studies.' "
+                        "Refuse non-educational topics. "
                         f"User Question: {prompt}"
                     )
                     
-                    # Using gemini-1.5-flash for speed and stability
+                    # FIXED URL: gemini-1.5-flash is currently the standard free endpoint
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_api_key[0]}"
                     headers = {"Content-Type": "application/json"}
                     data = {
@@ -188,19 +186,20 @@ def main(page: ft.Page):
                     if response.status_code == 200:
                         return response.json()['candidates'][0]['content']['parts'][0]['text']
                     else:
-                        return f"AI Error {response.status_code}: Please check your internet or API Key."
+                        return f"AI Error {response.status_code}: Check API Key or Internet."
                 except Exception as e:
                     return f"Connection Failed: {str(e)}"
 
             # --- AI VIEW ---
             chat_list = ft.ListView(expand=True, spacing=15, padding=10)
+            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
+                                    bgcolor="#222", border_width=0)
             
             def send_ai(e):
                 q = ai_input.value
                 if not q: return
                 ai_input.value = ""
                 
-                # User Bubble
                 chat_list.controls.append(ft.Container(
                     content=ft.Text(q, color="white"),
                     bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
@@ -220,7 +219,6 @@ def main(page: ft.Page):
                         margin=ft.margin.only(right=20)
                     ))
                     
-                    # Save History
                     saved_chats.insert(0, {"title": q[:30], "content": res[:200]})
                     page.client_storage.set("saved_chats", saved_chats)
                     update_history_drawer()
@@ -228,23 +226,25 @@ def main(page: ft.Page):
 
                 threading.Thread(target=process).start()
 
-            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
-                                    bgcolor="#222", border_width=0, on_submit=send_ai)
+            ai_input.on_submit = send_ai
 
             # --- DRAWERS ---
-            def change_temp(e):
-                ai_temp[0] = float(e.control.value)
-                page.client_storage.set("ai_temp", ai_temp[0])
+            def change_temp(e): ai_temp[0] = float(e.control.value)
+            def update_key(e): 
+                current_api_key[0] = e.control.value
+                page.client_storage.set("api_key", e.control.value)
 
             page.drawer = ft.NavigationDrawer(
                 controls=[
                     ft.Container(height=30),
-                    ft.Text("AI Settings", size=20, weight="bold", color="cyan", text_align="center"),
+                    ft.Text("Settings", size=20, weight="bold", color="cyan", text_align="center"),
                     ft.Divider(),
                     ft.Container(content=ft.Column([
+                        ft.Text("Custom API Key", size=14),
+                        ft.TextField(hint_text="Paste Key", password=True, on_change=update_key, height=40, text_size=12),
+                        ft.Container(height=10),
                         ft.Text("Creativity", size=14),
                         ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=change_temp),
-                        ft.Text("Low = Strict | High = Creative", size=11, color="grey")
                     ]), padding=20)
                 ], bgcolor="#111"
             )
@@ -258,19 +258,15 @@ def main(page: ft.Page):
 
             def update_history_drawer():
                 history_col.controls.clear()
-                if not saved_chats:
-                    history_col.controls.append(ft.Text("No saved chats.", color="grey"))
-                else:
-                    for i, chat in enumerate(saved_chats):
-                        history_col.controls.append(
-                            ft.Container(
-                                content=ft.Row([
-                                    ft.Column([ft.Text(chat['title'], weight="bold", size=12), ft.Text(chat['content'][:30]+"...", size=10, color="grey")], expand=True),
-                                    ft.IconButton(ft.icons.DELETE_OUTLINE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat(x))
-                                ], alignment="spaceBetween"),
-                                bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
-                            )
+                for i, chat in enumerate(saved_chats):
+                    history_col.controls.append(
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Column([ft.Text(chat.get('title',''), weight="bold", size=12), ft.Text(chat.get('content',''), size=10, color="grey", no_wrap=True)], expand=True),
+                                ft.IconButton(ft.icons.DELETE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat(x))
+                            ]), bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
                         )
+                    )
 
             update_history_drawer()
             page.end_drawer = ft.NavigationDrawer(
@@ -288,33 +284,43 @@ def main(page: ft.Page):
                         ft.IconButton(ft.icons.SETTINGS, icon_color="grey", on_click=lambda e: page.show_drawer(page.drawer)),
                         ft.Text("AI TUTOR", weight="bold", size=16, color="cyan"),
                         ft.IconButton(ft.icons.HISTORY, icon_color="grey", on_click=lambda e: page.show_end_drawer(page.end_drawer))
-                    ], alignment="spaceBetween"),
-                    padding=10, bgcolor="#111"
+                    ], alignment="spaceBetween"), padding=10, bgcolor="#111"
                 ),
                 ft.Container(content=chat_list, expand=True, padding=10),
-                ft.Container(
-                    content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND_ROUNDED, icon_color="cyan", on_click=send_ai)]),
-                    padding=10, bgcolor="#111"
-                )
+                ft.Container(content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND, icon_color="cyan", on_click=send_ai)]), padding=10, bgcolor="#111")
             ], expand=True)
 
-            # --- DYNAMIC CONTENT ---
-            # Using ListView to prevent Black Screen
+            # --- MAIN CONTENT ---
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
+            
+            search_bar = ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
+                                     border_radius=20, bgcolor="#222", border_width=0)
+            
+            header_row = ft.Row([
+                ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
+                ft.Text("WB-NEXUS", size=22, weight="bold"),
+                ft.Row([ft.IconButton(icon=ft.icons.SHARE, icon_color="grey", on_click=share_app), ft.IconButton(icon=ft.icons.INFO, icon_color="grey", on_click=lambda _: page.open(info_dialog))])
+            ], alignment="spaceBetween")
+
+            header_container = ft.Container(
+                content=ft.Column([header_row, search_bar]),
+                padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
+                gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#111", "#1a1a1a"]),
+                border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
+            )
 
             def update_view():
                 body_content.controls.clear()
                 idx = current_tab[0]
-                query = current_search[0].lower()
+                query = search_bar.value.lower() if search_bar.value else ""
                 def match(text): return query in text.lower()
 
-                if idx == 0: # Books
+                if idx == 0: 
                     if "books_hs" in DATABASE:
-                        if any(match(x['title']) for x in DATABASE["books_hs"]):
-                            body_content.controls.append(ft.Text("HIGHER SECONDARY (11-12)", color="cyan", weight="bold"))
+                         if any(match(x['title']) for x in DATABASE["books_hs"]):
+                            body_content.controls.append(ft.Text("HS (11-12)", color="cyan", weight="bold"))
                             for x in DATABASE["books_hs"]: 
                                 if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "cyan"))
-                    
                     for k in ["books_class_10", "books_class_9", "books_class_8"]:
                         if k in DATABASE:
                             if any(match(x['title']) for x in DATABASE[k]):
@@ -322,7 +328,7 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-                elif idx == 1: # Papers
+                elif idx == 1:
                     for k in ["papers_2024", "papers_2023", "papers_2022"]:
                         if k in DATABASE:
                             if any(match(x['title']) for x in DATABASE[k]):
@@ -330,21 +336,23 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-                elif idx == 2: # Syllabus
-                    body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
+                elif idx == 2:
+                    body_content.controls.append(ft.Text("SYLLABUS", color="purple", weight="bold"))
                     for x in DATABASE.get("syllabus_2025", []): 
                         if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-                elif idx == 3: # Colleges
+                elif idx == 3:
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
                     for x in DATABASE.get("colleges", []):
-                        if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
+                        if match(x['name']): body_content.controls.append(create_college_card(x))
                 
                 page.update()
 
+            search_bar.on_change = lambda e: update_view()
+
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
-                if e.control.selected_index == 4: # AI Tab
+                if e.control.selected_index == 4:
                     main_layout.content = ai_view
                     header_container.visible = False
                 else:
@@ -353,11 +361,6 @@ def main(page: ft.Page):
                     update_view()
                 page.update()
 
-            def on_search(e):
-                current_search[0] = e.control.value
-                update_view()
-
-            # --- LAYOUT ---
             nav_bar = ft.NavigationBar(
                 selected_index=0,
                 on_change=on_nav,
@@ -371,59 +374,26 @@ def main(page: ft.Page):
                 ]
             )
 
-            # About Dialog
-            info_dialog = ft.AlertDialog(
-                title=ft.Text("About WB-NEXUS"),
-                content=ft.Column([
-                    ft.Text("Version: 1.0 (Platinum)"),
-                    ft.Text("Dev: ZEROS"),
-                    ft.Text("Database: 50+ Books, 3 Years Papers"),
-                    ft.Text("Updates: Check GitHub"),
-                ], height=100)
-            )
-
-            header_container = ft.Container(
-                content=ft.Column([
-                    ft.Row([
-                        ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
-                        ft.Text("WB-NEXUS", size=22, weight="bold"),
-                        ft.Row([
-                            ft.IconButton(icon=ft.icons.SHARE, icon_color="grey", on_click=share_app),
-                            ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
-                        ])
-                    ], alignment="spaceBetween"),
-                    ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
-                                 border_radius=20, bgcolor="#222", border_width=0, on_change=on_search)
-                ]),
-                padding=ft.padding.only(top=40, left=20, right=20, bottom=15),
-                gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#111", "#1a1a1a"]),
-                border=ft.border.only(bottom=ft.border.BorderSide(1, "#333"))
-            )
-
+            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Dev: ZEROS\nVer: 22.0 (Platinum)"))
             main_layout = ft.Container(content=body_content, expand=True)
             update_view() 
             page.add(ft.Column([header_container, main_layout], expand=True, spacing=0), nav_bar)
 
         except Exception as err:
             page.clean()
-            page.add(ft.Column([
-                ft.Text("CRASH DETECTED", color="red", size=20, weight="bold"),
-                ft.Text(f"Error: {str(err)}", color="white")
-            ], alignment="center", horizontal_alignment="center"))
+            page.add(ft.Text(f"Error: {err}", color="red"))
 
-    # --- 3. STARTUP SCREEN (SAFE) ---
+    # 3. STARTUP
     start_btn = ft.Container(
         content=ft.Column([
             ft.Icon(name=ft.icons.SHIELD_MOON, size=100, color="cyan"),
             ft.Text("WB-NEXUS", size=35, weight="bold", color="white"),
-            ft.Text("Your Academic Companion", size=14, color="grey"),
+            ft.Text("Student Portal", size=14, color="grey"),
             ft.Container(height=40),
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
         ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center,
-        expand=True,
-        bgcolor="#0a0a0a"
+        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
     )
 
     page.add(start_btn)
