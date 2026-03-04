@@ -18,9 +18,10 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Specific Flet Version
-      # This forces the stable version defined in requirements.txt
-      run: pip install -r requirements.txt
+    - name: Update Pip and Install Requirements
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
@@ -29,10 +30,11 @@ jobs:
 
     - name: Build APK
       run: |
+        # The 'yes' pipe handles any prompts
         yes | flet build apk --verbose --product "WB-NEXUS"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: wb-nexus-test
+        name: wb-nexus-release
         path: build/**/*.apk
