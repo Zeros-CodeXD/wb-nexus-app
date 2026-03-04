@@ -1,2 +1,4 @@
 flet==0.21.2
 requests
+binaryornot==0.4.4
+javaproperties==0.8.1
