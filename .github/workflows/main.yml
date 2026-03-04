@@ -18,10 +18,12 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Update Pip and Install Requirements
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
+        # We install the requirements AND the build tools manually to ensure the patch works
         pip install -r requirements.txt
+        pip install --upgrade cookiecutter binaryornot
 
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
@@ -30,7 +32,7 @@ jobs:
 
     - name: Build APK
       run: |
-        # The 'yes' pipe handles any prompts
+        # We use 'yes' to bypass prompts, and verbose to track progress
         yes | flet build apk --verbose --product "WB-NEXUS"
 
     - name: Upload APK
