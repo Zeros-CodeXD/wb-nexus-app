@@ -1,14 +1,14 @@
 import flet as ft
 import requests
 import threading
-import json
+import urllib.parse
 
 # --- 1. CONFIGURATION ---
-# Your API Key (Cleaned)
-API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
+# No API Key needed for Pollinations!
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
+  # --- BOOKS ---
   "books_hs": [
     {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
     {"title": "Sahitya Chorcha (Bengali) - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
@@ -39,6 +39,7 @@ DATABASE = {
     {"title": "Atit O Aitihya", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
     {"title": "Amader Prithibi", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"}
   ],
+  # --- PAPERS ---
   "papers_2024": [
     {"title": "2024 Bengali Paper", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
     {"title": "2024 English Paper", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
@@ -106,11 +107,9 @@ def main(page: ft.Page):
             
             # --- GLOBAL STATE ---
             ai_temp = [0.5]
-            current_api_key = [API_KEY]
             saved_chats = page.client_storage.get("saved_chats") or []
-            
-            current_search = [""]
             current_tab = [0]
+            current_search = [""]
             
             # --- UTILS ---
             def handle_link(e):
@@ -125,7 +124,6 @@ def main(page: ft.Page):
                             ft.Text(title, weight="bold", size=14, color="white", width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
                             ft.Text("Official PDF", size=10, color="grey"),
                         ], expand=True, spacing=2),
-                        
                         ft.IconButton(ft.icons.VISIBILITY, icon_color="grey", tooltip="View", data=link, on_click=handle_link),
                         ft.IconButton(ft.icons.DOWNLOAD_ROUNDED, icon_color=color, tooltip="Download", data=link, on_click=handle_link)
                     ], alignment="spaceBetween"),
@@ -146,63 +144,49 @@ def main(page: ft.Page):
                             ], expand=True),
                             ft.Container(content=ft.Text(status, size=10, weight="bold", color="black"), 
                                          bgcolor=col, padding=5, border_radius=5)
+                        ]),
+                        ft.Divider(height=10, color="#333"),
+                        ft.Row([
+                            ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
+                            ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
+                                              data=item['link'], on_click=handle_link)
+                        ], alignment="spaceBetween")
                     ]),
-                    ft.Divider(height=10, color="#333"),
-                    ft.Row([
-                        ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
-                        ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
-                                          data=item['link'], on_click=handle_link)
-                    ], alignment="spaceBetween")
-                ]),
-                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15,
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
-            )
+                    padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15,
+                    shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
+                )
 
-            # --- AI LOGIC (MULTI-MODEL FAILOVER) ---
-            def generate_ai_response(prompt, temp):
+            # --- AI LOGIC (POLLINATIONS - FREE & NO KEY) ---
+            def generate_ai_response(prompt):
                 try:
-                    full_prompt = (
-                        "You are a strict AI Tutor for West Bengal Board students. "
-                        "Only answer educational questions. Be concise. "
-                        f"User Question: {prompt}"
-                    )
+                    # STRICT SYSTEM PROMPT encoded in the URL
+                    system_msg = "You are a strict AI Tutor for West Bengal Board students. Answer ONLY educational questions. Be concise. "
+                    full_prompt = system_msg + "Student asks: " + prompt
                     
-                    # 1. Try Gemini 2.0 Flash (Newest)
-                    models_to_try = [
-                        "gemini-2.0-flash",
-                        "gemini-1.5-flash", 
-                        "gemini-pro"
-                    ]
+                    # URL Encoding the prompt
+                    encoded_prompt = urllib.parse.quote(full_prompt)
                     
-                    for model in models_to_try:
-                        try:
-                            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={current_api_key[0]}"
-                            headers = {"Content-Type": "application/json"}
-                            data = {
-                                "contents": [{"parts": [{"text": full_prompt}]}], 
-                                "generationConfig": {"temperature": temp}
-                            }
-                            
-                            response = requests.post(url, headers=headers, json=data, timeout=8)
-                            
-                            if response.status_code == 200:
-                                return response.json()['candidates'][0]['content']['parts'][0]['text']
-                        except:
-                            continue # Try next model
+                    # Pollinations API (Model: OpenAI)
+                    url = f"https://text.pollinations.ai/{encoded_prompt}?model=openai"
                     
-                    return "Error: All AI Models Busy/Unavailable."
+                    response = requests.get(url, timeout=15)
                     
+                    if response.status_code == 200:
+                        return response.text
+                    else:
+                        return f"AI Error: {response.status_code}"
                 except Exception as e:
-                    return f"Connection Failed. Check Internet."
+                    return f"Connection Failed: {str(e)}"
 
             chat_list = ft.ListView(expand=True, spacing=15, padding=10)
+            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
+                                    bgcolor="#222", border_width=0)
             
             def send_ai(e):
                 q = ai_input.value
                 if not q: return
                 ai_input.value = ""
                 
-                # User Bubble
                 chat_list.controls.append(ft.Container(
                     content=ft.Text(q, color="white"),
                     bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
@@ -214,7 +198,7 @@ def main(page: ft.Page):
                 page.update()
 
                 def process():
-                    res = generate_ai_response(q, ai_temp[0])
+                    res = generate_ai_response(q)
                     chat_list.controls.remove(loading)
                     chat_list.controls.append(ft.Container(
                         content=ft.Text(res, color="white", selectable=True),
@@ -229,16 +213,12 @@ def main(page: ft.Page):
 
                 threading.Thread(target=process).start()
 
-            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
-                                    bgcolor="#222", border_width=0, on_submit=send_ai)
+            ai_input.on_submit = send_ai
 
             # --- DRAWERS ---
-            def update_key(e): 
-                current_api_key[0] = e.control.value
-                page.client_storage.set("api_key", e.control.value)
-            
-            def update_temp(e):
-                ai_temp[0] = float(e.control.value)
+            def change_temp(e):
+                # Pollinations doesn't support temp easily via URL, but we keep slider for UI feel
+                pass
 
             page.drawer = ft.NavigationDrawer(
                 controls=[
@@ -246,12 +226,8 @@ def main(page: ft.Page):
                     ft.Text("Settings", size=20, weight="bold", color="cyan", text_align="center"),
                     ft.Divider(),
                     ft.Container(content=ft.Column([
-                        ft.Text("Custom API Key", size=14),
-                        ft.TextField(hint_text="Paste Gemini Key", password=True, on_change=update_key, height=40, text_size=12),
-                        ft.Text("Leave empty to use Default", size=10, color="grey"),
-                        ft.Container(height=10),
                         ft.Text("Creativity", size=14),
-                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=update_temp),
+                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=change_temp),
                     ]), padding=20)
                 ], bgcolor="#111"
             )
@@ -289,6 +265,7 @@ def main(page: ft.Page):
                 ], bgcolor="#111"
             )
 
+            # --- AI VIEW ---
             ai_view = ft.Column([
                 ft.Container(
                     content=ft.Row([
@@ -302,7 +279,7 @@ def main(page: ft.Page):
                 ft.Container(content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND_ROUNDED, icon_color="cyan", on_click=send_ai)]), padding=10, bgcolor="#111")
             ], expand=True)
 
-            # --- DYNAMIC CONTENT LOADER ---
+            # --- MAIN CONTENT ---
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
             
             search_bar = ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
@@ -327,7 +304,7 @@ def main(page: ft.Page):
                 query = search_bar.value.lower() if search_bar.value else ""
                 def match(text): return query in text.lower()
 
-                if idx == 0: # Books
+                if idx == 0: 
                     if "books_hs" in DATABASE:
                          if any(match(x['title']) for x in DATABASE["books_hs"]):
                             body_content.controls.append(ft.Text("HS (11-12)", color="cyan", weight="bold"))
@@ -340,7 +317,7 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-                elif idx == 1: # Papers
+                elif idx == 1:
                     for k in ["papers_2024", "papers_2023", "papers_2022"]:
                         if k in DATABASE:
                             if any(match(x['title']) for x in DATABASE[k]):
@@ -348,12 +325,12 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-                elif idx == 2: # Syllabus
+                elif idx == 2:
                     body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
                     for x in DATABASE.get("syllabus_2025", []): 
                         if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-                elif idx == 3: # Colleges
+                elif idx == 3:
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
                     for x in DATABASE.get("colleges", []):
                         if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
@@ -364,7 +341,7 @@ def main(page: ft.Page):
 
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
-                if e.control.selected_index == 4: # AI Tab
+                if e.control.selected_index == 4:
                     main_layout.content = ai_view
                     header_container.visible = False
                 else:
@@ -400,12 +377,14 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Icon(name=ft.icons.SHIELD_MOON, size=100, color="cyan"),
             ft.Text("WB-NEXUS", size=35, weight="bold", color="white"),
-            ft.Text("Student Portal", size=14, color="grey"),
+            ft.Text("Your Academic Companion", size=14, color="grey"),
             ft.Container(height=40),
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
         ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
+        alignment=ft.alignment.center,
+        expand=True,
+        bgcolor="#0a0a0a"
     )
 
     page.add(start_btn)
