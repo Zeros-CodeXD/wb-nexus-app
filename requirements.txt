@@ -1,4 +1,2 @@
 flet==0.21.2
 requests
-cookiecutter>=2.1.0
-binaryornot>=0.4.4
