@@ -4,8 +4,8 @@ import threading
 import json
 
 # --- 1. CONFIGURATION ---
-# NEW API KEY (Updated)
-API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
+# The NEW Key you provided
+DEFAULT_API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
@@ -99,27 +99,27 @@ def main(page: ft.Page):
     page.spacing = 0
     page.theme = ft.Theme(color_scheme_seed="cyan", use_material3=True)
 
-    # 2. APP LOGIC (SAFE START)
+    # 2. CLICK-TO-START LOGIC
     def launch_app(e):
         try:
             page.clean()
             
             # --- GLOBAL STATE ---
             ai_temp = [0.5]
-            current_api_key = [API_KEY]
+            
+            # --- API KEY LOGIC (Use Default or Saved) ---
+            saved_key = page.client_storage.get("api_key")
+            # If saved key exists, use it. Otherwise use DEFAULT_API_KEY
+            current_api_key = [saved_key if saved_key else DEFAULT_API_KEY]
+            
             saved_chats = page.client_storage.get("saved_chats") or []
-            current_tab = [0]
+            
             current_search = [""]
+            current_tab = [0]
             
             # --- UTILS ---
             def handle_link(e):
                 if e.control.data: page.launch_url(e.control.data)
-                
-            def share_app(e):
-                page.set_clipboard("Check out WB-NEXUS!")
-                page.snack_bar = ft.SnackBar(ft.Text("Link copied!"))
-                page.snack_bar.open = True
-                page.update()
 
             # --- UI BUILDERS ---
             def create_card(title, link, icon, color):
@@ -163,43 +163,46 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
-            # --- AI LOGIC (FIXED URL) ---
+            # --- AI LOGIC (ROBUST FALLBACK) ---
             def generate_ai_response(prompt, temp):
                 try:
                     full_prompt = (
-                        "You are a strict AI Tutor for West Bengal Board students (WBBSE/WBCHSE). "
-                        "Your ONLY purpose is to answer educational questions, suggest topics, and help with exams. "
-                        "Refuse non-educational topics. "
+                        "You are a strict AI Tutor for West Bengal Board students. "
+                        "Only answer educational questions. Be concise. "
                         f"User Question: {prompt}"
                     )
                     
-                    # FIXED URL: gemini-1.5-flash is currently the standard free endpoint
+                    # 1. TRY PRIMARY MODEL (gemini-1.5-flash)
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_api_key[0]}"
                     headers = {"Content-Type": "application/json"}
-                    data = {
-                        "contents": [{"parts": [{"text": full_prompt}]}], 
-                        "generationConfig": {"temperature": temp}
-                    }
+                    data = {"contents": [{"parts": [{"text": full_prompt}]}], "generationConfig": {"temperature": temp}}
                     
                     response = requests.post(url, headers=headers, json=data, timeout=10)
                     
                     if response.status_code == 200:
                         return response.json()['candidates'][0]['content']['parts'][0]['text']
+                    
+                    # 2. IF 404 (Not Found), TRY FALLBACK MODEL (gemini-pro)
+                    elif response.status_code == 404:
+                         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={current_api_key[0]}"
+                         response = requests.post(url, headers=headers, json=data, timeout=10)
+                         if response.status_code == 200:
+                             return response.json()['candidates'][0]['content']['parts'][0]['text']
+                         else:
+                             return f"AI Error: {response.status_code}"
                     else:
-                        return f"AI Error {response.status_code}: Check API Key or Internet."
+                        return f"AI Error: {response.status_code}"
                 except Exception as e:
-                    return f"Connection Failed: {str(e)}"
+                    return f"Connection Failed. Check Internet."
 
-            # --- AI VIEW ---
             chat_list = ft.ListView(expand=True, spacing=15, padding=10)
-            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
-                                    bgcolor="#222", border_width=0)
             
             def send_ai(e):
                 q = ai_input.value
                 if not q: return
                 ai_input.value = ""
                 
+                # User Bubble
                 chat_list.controls.append(ft.Container(
                     content=ft.Text(q, color="white"),
                     bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
@@ -226,13 +229,16 @@ def main(page: ft.Page):
 
                 threading.Thread(target=process).start()
 
-            ai_input.on_submit = send_ai
+            ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
+                                    bgcolor="#222", border_width=0, on_submit=send_ai)
 
             # --- DRAWERS ---
-            def change_temp(e): ai_temp[0] = float(e.control.value)
             def update_key(e): 
                 current_api_key[0] = e.control.value
                 page.client_storage.set("api_key", e.control.value)
+            
+            def update_temp(e):
+                ai_temp[0] = float(e.control.value)
 
             page.drawer = ft.NavigationDrawer(
                 controls=[
@@ -241,10 +247,11 @@ def main(page: ft.Page):
                     ft.Divider(),
                     ft.Container(content=ft.Column([
                         ft.Text("Custom API Key", size=14),
-                        ft.TextField(hint_text="Paste Key", password=True, on_change=update_key, height=40, text_size=12),
+                        ft.TextField(hint_text="Paste Gemini Key", password=True, on_change=update_key, height=40, text_size=12),
+                        ft.Text("Leave empty to use Default", size=10, color="grey"),
                         ft.Container(height=10),
                         ft.Text("Creativity", size=14),
-                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=change_temp),
+                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=update_temp),
                     ]), padding=20)
                 ], bgcolor="#111"
             )
@@ -258,15 +265,19 @@ def main(page: ft.Page):
 
             def update_history_drawer():
                 history_col.controls.clear()
-                for i, chat in enumerate(saved_chats):
-                    history_col.controls.append(
-                        ft.Container(
-                            content=ft.Row([
-                                ft.Column([ft.Text(chat.get('title',''), weight="bold", size=12), ft.Text(chat.get('content',''), size=10, color="grey", no_wrap=True)], expand=True),
-                                ft.IconButton(ft.icons.DELETE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat(x))
-                            ]), bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
+                if not saved_chats:
+                    history_col.controls.append(ft.Text("No saved chats.", color="grey"))
+                else:
+                    for i, chat in enumerate(saved_chats):
+                        history_col.controls.append(
+                            ft.Container(
+                                content=ft.Row([
+                                    ft.Column([ft.Text(chat.get('title',''), weight="bold", size=12), ft.Text(chat.get('content',''), size=10, color="grey", no_wrap=True)], expand=True),
+                                    ft.IconButton(ft.icons.DELETE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat(x))
+                                ], alignment="spaceBetween"),
+                                bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
+                            )
                         )
-                    )
 
             update_history_drawer()
             page.end_drawer = ft.NavigationDrawer(
@@ -278,19 +289,21 @@ def main(page: ft.Page):
                 ], bgcolor="#111"
             )
 
+            # --- AI VIEW LAYOUT ---
             ai_view = ft.Column([
                 ft.Container(
                     content=ft.Row([
                         ft.IconButton(ft.icons.SETTINGS, icon_color="grey", on_click=lambda e: page.show_drawer(page.drawer)),
                         ft.Text("AI TUTOR", weight="bold", size=16, color="cyan"),
                         ft.IconButton(ft.icons.HISTORY, icon_color="grey", on_click=lambda e: page.show_end_drawer(page.end_drawer))
-                    ], alignment="spaceBetween"), padding=10, bgcolor="#111"
+                    ], alignment="spaceBetween"),
+                    padding=10, bgcolor="#111"
                 ),
                 ft.Container(content=chat_list, expand=True, padding=10),
-                ft.Container(content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND, icon_color="cyan", on_click=send_ai)]), padding=10, bgcolor="#111")
+                ft.Container(content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND_ROUNDED, icon_color="cyan", on_click=send_ai)]), padding=10, bgcolor="#111")
             ], expand=True)
 
-            # --- MAIN CONTENT ---
+            # --- DYNAMIC CONTENT LOADER ---
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
             
             search_bar = ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
@@ -299,7 +312,7 @@ def main(page: ft.Page):
             header_row = ft.Row([
                 ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
                 ft.Text("WB-NEXUS", size=22, weight="bold"),
-                ft.Row([ft.IconButton(icon=ft.icons.SHARE, icon_color="grey", on_click=share_app), ft.IconButton(icon=ft.icons.INFO, icon_color="grey", on_click=lambda _: page.open(info_dialog))])
+                ft.IconButton(icon=ft.icons.INFO_OUTLINE, icon_color="grey", on_click=lambda _: page.open(info_dialog))
             ], alignment="spaceBetween")
 
             header_container = ft.Container(
@@ -315,7 +328,7 @@ def main(page: ft.Page):
                 query = search_bar.value.lower() if search_bar.value else ""
                 def match(text): return query in text.lower()
 
-                if idx == 0: 
+                if idx == 0: # Books
                     if "books_hs" in DATABASE:
                          if any(match(x['title']) for x in DATABASE["books_hs"]):
                             body_content.controls.append(ft.Text("HS (11-12)", color="cyan", weight="bold"))
@@ -328,7 +341,7 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-                elif idx == 1:
+                elif idx == 1: # Papers
                     for k in ["papers_2024", "papers_2023", "papers_2022"]:
                         if k in DATABASE:
                             if any(match(x['title']) for x in DATABASE[k]):
@@ -336,12 +349,12 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-                elif idx == 2:
-                    body_content.controls.append(ft.Text("SYLLABUS", color="purple", weight="bold"))
+                elif idx == 2: # Syllabus
+                    body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
                     for x in DATABASE.get("syllabus_2025", []): 
                         if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-                elif idx == 3:
+                elif idx == 3: # Colleges
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
                     for x in DATABASE.get("colleges", []):
                         if match(x['name']): body_content.controls.append(create_college_card(x))
@@ -352,7 +365,7 @@ def main(page: ft.Page):
 
             def on_nav(e):
                 current_tab[0] = e.control.selected_index
-                if e.control.selected_index == 4:
+                if e.control.selected_index == 4: # AI Tab
                     main_layout.content = ai_view
                     header_container.visible = False
                 else:
@@ -374,7 +387,7 @@ def main(page: ft.Page):
                 ]
             )
 
-            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Dev: ZEROS\nVer: 22.0 (Platinum)"))
+            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Dev: ZEROS\nVer: 23.0"))
             main_layout = ft.Container(content=body_content, expand=True)
             update_view() 
             page.add(ft.Column([header_container, main_layout], expand=True, spacing=0), nav_bar)
