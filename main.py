@@ -4,8 +4,8 @@ import threading
 import json
 
 # --- 1. CONFIGURATION ---
-# The NEW Key you provided
-DEFAULT_API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
+# Your API Key (Cleaned)
+API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
@@ -106,12 +106,7 @@ def main(page: ft.Page):
             
             # --- GLOBAL STATE ---
             ai_temp = [0.5]
-            
-            # --- API KEY LOGIC (Use Default or Saved) ---
-            saved_key = page.client_storage.get("api_key")
-            # If saved key exists, use it. Otherwise use DEFAULT_API_KEY
-            current_api_key = [saved_key if saved_key else DEFAULT_API_KEY]
-            
+            current_api_key = [API_KEY]
             saved_chats = page.client_storage.get("saved_chats") or []
             
             current_search = [""]
@@ -151,19 +146,19 @@ def main(page: ft.Page):
                             ], expand=True),
                             ft.Container(content=ft.Text(status, size=10, weight="bold", color="black"), 
                                          bgcolor=col, padding=5, border_radius=5)
-                        ]),
-                        ft.Divider(height=10, color="#333"),
-                        ft.Row([
-                            ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
-                            ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
-                                              data=item['link'], on_click=handle_link)
-                        ], alignment="spaceBetween")
                     ]),
-                    padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15,
-                    shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
-                )
+                    ft.Divider(height=10, color="#333"),
+                    ft.Row([
+                        ft.Text(f"Cutoff: {item.get('cutoff', 'N/A')}", size=11, color="grey"),
+                        ft.ElevatedButton("Apply", height=28, style=ft.ButtonStyle(bgcolor="blue", color="white"), 
+                                          data=item['link'], on_click=handle_link)
+                    ], alignment="spaceBetween")
+                ]),
+                padding=15, margin=ft.margin.only(bottom=10), bgcolor="#1a1a1a", border_radius=15,
+                shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
+            )
 
-            # --- AI LOGIC (ROBUST FALLBACK) ---
+            # --- AI LOGIC (MULTI-MODEL FAILOVER) ---
             def generate_ai_response(prompt, temp):
                 try:
                     full_prompt = (
@@ -172,26 +167,31 @@ def main(page: ft.Page):
                         f"User Question: {prompt}"
                     )
                     
-                    # 1. TRY PRIMARY MODEL (gemini-1.5-flash)
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_api_key[0]}"
-                    headers = {"Content-Type": "application/json"}
-                    data = {"contents": [{"parts": [{"text": full_prompt}]}], "generationConfig": {"temperature": temp}}
+                    # 1. Try Gemini 2.0 Flash (Newest)
+                    models_to_try = [
+                        "gemini-2.0-flash",
+                        "gemini-1.5-flash", 
+                        "gemini-pro"
+                    ]
                     
-                    response = requests.post(url, headers=headers, json=data, timeout=10)
+                    for model in models_to_try:
+                        try:
+                            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={current_api_key[0]}"
+                            headers = {"Content-Type": "application/json"}
+                            data = {
+                                "contents": [{"parts": [{"text": full_prompt}]}], 
+                                "generationConfig": {"temperature": temp}
+                            }
+                            
+                            response = requests.post(url, headers=headers, json=data, timeout=8)
+                            
+                            if response.status_code == 200:
+                                return response.json()['candidates'][0]['content']['parts'][0]['text']
+                        except:
+                            continue # Try next model
                     
-                    if response.status_code == 200:
-                        return response.json()['candidates'][0]['content']['parts'][0]['text']
+                    return "Error: All AI Models Busy/Unavailable."
                     
-                    # 2. IF 404 (Not Found), TRY FALLBACK MODEL (gemini-pro)
-                    elif response.status_code == 404:
-                         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={current_api_key[0]}"
-                         response = requests.post(url, headers=headers, json=data, timeout=10)
-                         if response.status_code == 200:
-                             return response.json()['candidates'][0]['content']['parts'][0]['text']
-                         else:
-                             return f"AI Error: {response.status_code}"
-                    else:
-                        return f"AI Error: {response.status_code}"
                 except Exception as e:
                     return f"Connection Failed. Check Internet."
 
@@ -289,7 +289,6 @@ def main(page: ft.Page):
                 ], bgcolor="#111"
             )
 
-            # --- AI VIEW LAYOUT ---
             ai_view = ft.Column([
                 ft.Container(
                     content=ft.Row([
@@ -357,7 +356,7 @@ def main(page: ft.Page):
                 elif idx == 3: # Colleges
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
                     for x in DATABASE.get("colleges", []):
-                        if match(x['name']): body_content.controls.append(create_college_card(x))
+                        if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
                 
                 page.update()
 
