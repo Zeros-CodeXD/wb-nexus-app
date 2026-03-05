@@ -1,14 +1,15 @@
 import flet as ft
 import requests
 import threading
+import json
+import uuid
 import urllib.parse
 
 # --- 1. CONFIGURATION ---
-# No API Key needed for Pollinations!
+API_KEY = "AIzaSyAZv239MkAv6vwvyEszRLFSv6CYybutaAU" 
 
 # --- 2. THE MASTER DATABASE ---
 DATABASE = {
-  # --- BOOKS ---
   "books_hs": [
     {"title": "A Text Book of English (B) - Class 12", "link": "https://drive.google.com/file/d/1n7oZPsG83TpHLO4Riz47t1CDqkWaEt--/view?usp=sharing"},
     {"title": "Sahitya Chorcha (Bengali) - Class 12", "link": "https://drive.google.com/file/d/10yohNVzqZ_ITnOEzT4AhK5GNlJUwYm8v/view?usp=drive_link"},
@@ -39,7 +40,6 @@ DATABASE = {
     {"title": "Atit O Aitihya", "link": "https://drive.google.com/file/d/1z9yFpVeblEDkqlOueifS5bOoL-It_y6t/view"},
     {"title": "Amader Prithibi", "link": "https://drive.google.com/file/d/117Pahy31xCyuCGBa_7y_G7OKIE01N4Ch/view"}
   ],
-  # --- PAPERS ---
   "papers_2024": [
     {"title": "2024 Bengali Paper", "link": "https://drive.google.com/file/d/1cIMbMTMDD0uam_Dpgbw_Pwq3wxaMNoOI/view"},
     {"title": "2024 English Paper", "link": "https://drive.google.com/file/d/1Jy1Mje6v1VExMIs828UMIekf8m7NyXRu/view"},
@@ -107,7 +107,22 @@ def main(page: ft.Page):
             
             # --- GLOBAL STATE ---
             ai_temp = [0.5]
-            saved_chats = page.client_storage.get("saved_chats") or []
+            current_api_key = [API_KEY]
+            
+            # State for Chat Sessions
+            # Structure: {"session_id": [{"role": "user", "text": "Hi"}, ...]}
+            # For simplicity in UI, we store list of sessions: [{"id": "1", "title": "Math Help", "history": []}]
+            sessions = page.client_storage.get("ai_sessions") or []
+            
+            # Current Session Index (Default to none, creating new)
+            current_session_idx = [0] 
+            
+            # If no sessions, create a default one
+            if not sessions:
+                new_sess = {"id": str(uuid.uuid4()), "title": "New Chat", "history": []}
+                sessions.append(new_sess)
+                page.client_storage.set("ai_sessions", sessions)
+            
             current_tab = [0]
             current_search = [""]
             
@@ -115,7 +130,7 @@ def main(page: ft.Page):
             def handle_link(e):
                 if e.control.data: page.launch_url(e.control.data)
 
-            # --- UI BUILDERS ---
+            # --- CARD BUILDERS ---
             def create_card(title, link, icon, color):
                 return ft.Container(
                     content=ft.Row([
@@ -156,69 +171,97 @@ def main(page: ft.Page):
                     shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=ft.colors.with_opacity(0.3, "black"))
                 )
 
-            # --- AI LOGIC (POLLINATIONS - FREE & NO KEY) ---
-            def generate_ai_response(prompt):
+            # --- HYBRID AI ENGINE ---
+            def get_ai_response(prompt, temp):
+                system_prompt = "You are a strict AI Tutor for West Bengal Board students. Answer ONLY educational questions. Be concise."
+                
+                # 1. Try Gemini (Primary)
                 try:
-                    # STRICT SYSTEM PROMPT encoded in the URL
-                    system_msg = "You are a strict AI Tutor for West Bengal Board students. Answer ONLY educational questions. Be concise. "
-                    full_prompt = system_msg + "Student asks: " + prompt
-                    
-                    # URL Encoding the prompt
-                    encoded_prompt = urllib.parse.quote(full_prompt)
-                    
-                    # Pollinations API (Model: OpenAI)
-                    url = f"https://text.pollinations.ai/{encoded_prompt}?model=openai"
-                    
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_api_key[0]}"
+                    headers = {"Content-Type": "application/json"}
+                    data = {
+                        "contents": [{"parts": [{"text": f"{system_prompt}\nUser: {prompt}"}]}], 
+                        "generationConfig": {"temperature": temp}
+                    }
+                    response = requests.post(url, headers=headers, json=data, timeout=8)
+                    if response.status_code == 200:
+                        return response.json()['candidates'][0]['content']['parts'][0]['text']
+                except:
+                    pass # Fail silently to backup
+
+                # 2. Try Pollinations (Unlimited Backup)
+                try:
+                    # Encoding prompt for URL
+                    full_p = f"{system_prompt}. User asks: {prompt}"
+                    encoded = urllib.parse.quote(full_p)
+                    url = f"https://text.pollinations.ai/{encoded}?model=openai"
                     response = requests.get(url, timeout=15)
-                    
                     if response.status_code == 200:
                         return response.text
-                    else:
-                        return f"AI Error: {response.status_code}"
-                except Exception as e:
-                    return f"Connection Failed: {str(e)}"
+                except:
+                    pass
 
-            chat_list = ft.ListView(expand=True, spacing=15, padding=10)
+                return "Error: All AI services busy. Check internet."
+
+            # --- AI UI SECTION ---
+            chat_list = ft.ListView(expand=True, spacing=15, padding=10, auto_scroll=True)
             ai_input = ft.TextField(hint_text="Ask your AI Tutor...", expand=True, border_radius=20, 
                                     bgcolor="#222", border_width=0)
             
+            def render_current_chat():
+                chat_list.controls.clear()
+                # Get history of current session
+                if sessions:
+                    history = sessions[current_session_idx[0]]['history']
+                    for msg in history:
+                        align = ft.alignment.center_right if msg['role'] == 'user' else ft.alignment.center_left
+                        bg = "#333" if msg['role'] == 'user' else "#004d40"
+                        chat_list.controls.append(ft.Container(
+                            content=ft.Text(msg['text'], color="white", selectable=True),
+                            bgcolor=bg, padding=12, border_radius=12,
+                            alignment=align, margin=ft.margin.symmetric(horizontal=10)
+                        ))
+                page.update()
+
             def send_ai(e):
                 q = ai_input.value
                 if not q: return
                 ai_input.value = ""
                 
-                chat_list.controls.append(ft.Container(
-                    content=ft.Text(q, color="white"),
-                    bgcolor="#333", padding=12, border_radius=ft.border_radius.only(12,12,0,12),
-                    alignment=ft.alignment.center_right, margin=ft.margin.only(left=50)
-                ))
+                # 1. Add User Msg to UI & Data
+                sessions[current_session_idx[0]]['history'].append({"role": "user", "text": q})
+                # Update title if it's the first message
+                if len(sessions[current_session_idx[0]]['history']) == 1:
+                    sessions[current_session_idx[0]]['title'] = q[:20] + "..."
+                    update_history_drawer()
+
+                render_current_chat()
                 
+                # Loading
                 loading = ft.Text("Thinking...", color="cyan", italic=True)
                 chat_list.controls.append(loading)
                 page.update()
 
                 def process():
-                    res = generate_ai_response(q)
-                    chat_list.controls.remove(loading)
-                    chat_list.controls.append(ft.Container(
-                        content=ft.Text(res, color="white", selectable=True),
-                        bgcolor="#004d40", padding=12, border_radius=ft.border_radius.only(12,12,12,0),
-                        margin=ft.margin.only(right=20)
-                    ))
+                    res = get_ai_response(q, ai_temp[0])
+                    # Remove loading (hacky way: reload list)
+                    sessions[current_session_idx[0]]['history'].append({"role": "ai", "text": res})
+                    # Save to storage
+                    page.client_storage.set("ai_sessions", sessions)
                     
-                    saved_chats.insert(0, {"title": q[:30], "content": res[:200]})
-                    page.client_storage.set("saved_chats", saved_chats)
-                    update_history_drawer()
-                    page.update()
+                    render_current_chat()
 
                 threading.Thread(target=process).start()
 
             ai_input.on_submit = send_ai
 
             # --- DRAWERS ---
-            def change_temp(e):
-                # Pollinations doesn't support temp easily via URL, but we keep slider for UI feel
-                pass
+            def update_key(e): 
+                current_api_key[0] = e.control.value
+                page.client_storage.set("api_key", e.control.value)
+            
+            def update_temp(e):
+                ai_temp[0] = float(e.control.value)
 
             page.drawer = ft.NavigationDrawer(
                 controls=[
@@ -226,46 +269,80 @@ def main(page: ft.Page):
                     ft.Text("Settings", size=20, weight="bold", color="cyan", text_align="center"),
                     ft.Divider(),
                     ft.Container(content=ft.Column([
+                        ft.Text("Custom API Key", size=14),
+                        ft.TextField(hint_text="Paste Gemini Key", password=True, on_change=update_key, height=40, text_size=12),
+                        ft.Text("Leave empty to use Default", size=10, color="grey"),
+                        ft.Container(height=10),
                         ft.Text("Creativity", size=14),
-                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=change_temp),
+                        ft.Slider(min=0.0, max=1.0, divisions=10, value=0.5, label="{value}", on_change=update_temp),
                     ]), padding=20)
                 ], bgcolor="#111"
             )
 
-            history_col = ft.Column()
-            def delete_chat(idx):
-                del saved_chats[idx]
-                page.client_storage.set("saved_chats", saved_chats)
+            # Session Management Drawer
+            session_col = ft.Column()
+
+            def switch_session(idx):
+                current_session_idx[0] = idx
+                render_current_chat()
+                page.close_end_drawer()
+
+            def delete_session(idx):
+                if len(sessions) > 1:
+                    del sessions[idx]
+                    current_session_idx[0] = 0 # Reset to first
+                else:
+                    # Reset the last remaining session
+                    sessions[0]['history'] = []
+                    sessions[0]['title'] = "New Chat"
+                
+                page.client_storage.set("ai_sessions", sessions)
                 update_history_drawer()
-                page.update()
+                render_current_chat()
+
+            def create_new_chat(e):
+                new_sess = {"id": str(uuid.uuid4()), "title": "New Chat", "history": []}
+                sessions.insert(0, new_sess) # Add to top
+                current_session_idx[0] = 0
+                page.client_storage.set("ai_sessions", sessions)
+                update_history_drawer()
+                render_current_chat()
+                page.close_end_drawer()
 
             def update_history_drawer():
-                history_col.controls.clear()
-                if not saved_chats:
-                    history_col.controls.append(ft.Text("No saved chats.", color="grey"))
-                else:
-                    for i, chat in enumerate(saved_chats):
-                        history_col.controls.append(
-                            ft.Container(
-                                content=ft.Row([
-                                    ft.Column([ft.Text(chat.get('title',''), weight="bold", size=12), ft.Text(chat.get('content',''), size=10, color="grey", no_wrap=True)], expand=True),
-                                    ft.IconButton(ft.icons.DELETE, icon_color="red", icon_size=18, on_click=lambda _, x=i: delete_chat(x))
-                                ], alignment="spaceBetween"),
-                                bgcolor="#222", padding=10, border_radius=8, margin=ft.margin.only(bottom=5)
-                            )
+                session_col.controls.clear()
+                
+                # New Chat Button
+                session_col.controls.append(
+                    ft.ElevatedButton("Start New Chat", icon=ft.icons.ADD, bgcolor="cyan", color="black", on_click=create_new_chat)
+                )
+                session_col.controls.append(ft.Divider(color="grey"))
+
+                for i, sess in enumerate(sessions):
+                    bg = "#333" if i == current_session_idx[0] else "#222"
+                    session_col.controls.append(
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Text(sess['title'], weight="bold", size=12, width=140, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.IconButton(ft.icons.DELETE, icon_color="red", icon_size=16, on_click=lambda _, x=i: delete_session(x))
+                            ], alignment="spaceBetween"),
+                            bgcolor=bg, padding=10, border_radius=8, margin=ft.margin.only(bottom=5),
+                            on_click=lambda _, x=i: switch_session(x)
                         )
+                    )
+                page.update()
 
             update_history_drawer()
+            
             page.end_drawer = ft.NavigationDrawer(
                 controls=[
                     ft.Container(height=30),
-                    ft.Text("History", size=20, weight="bold", color="orange", text_align="center"),
-                    ft.Divider(),
-                    ft.Container(content=history_col, padding=10, expand=True)
+                    ft.Text("Chat Sessions", size=20, weight="bold", color="orange", text_align="center"),
+                    ft.Container(content=session_col, padding=10, expand=True)
                 ], bgcolor="#111"
             )
 
-            # --- AI VIEW ---
+            # --- AI VIEW LAYOUT ---
             ai_view = ft.Column([
                 ft.Container(
                     content=ft.Row([
@@ -279,12 +356,13 @@ def main(page: ft.Page):
                 ft.Container(content=ft.Row([ai_input, ft.IconButton(ft.icons.SEND_ROUNDED, icon_color="cyan", on_click=send_ai)]), padding=10, bgcolor="#111")
             ], expand=True)
 
-            # --- MAIN CONTENT ---
+            # --- MAIN CONTENT LOADER ---
             body_content = ft.ListView(expand=True, padding=15, spacing=10)
             
             search_bar = ft.TextField(hint_text="Search...", prefix_icon=ft.icons.SEARCH, height=40, text_size=13, 
                                      border_radius=20, bgcolor="#222", border_width=0)
             
+            # Header Icons
             header_row = ft.Row([
                 ft.Icon(ft.icons.SHIELD_MOON, color="cyan", size=28),
                 ft.Text("WB-NEXUS", size=22, weight="bold"),
@@ -304,7 +382,7 @@ def main(page: ft.Page):
                 query = search_bar.value.lower() if search_bar.value else ""
                 def match(text): return query in text.lower()
 
-                if idx == 0: 
+                if idx == 0: # Books
                     if "books_hs" in DATABASE:
                          if any(match(x['title']) for x in DATABASE["books_hs"]):
                             body_content.controls.append(ft.Text("HS (11-12)", color="cyan", weight="bold"))
@@ -317,7 +395,7 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.BOOK, "orange"))
 
-                elif idx == 1:
+                elif idx == 1: # Papers
                     for k in ["papers_2024", "papers_2023", "papers_2022"]:
                         if k in DATABASE:
                             if any(match(x['title']) for x in DATABASE[k]):
@@ -325,12 +403,12 @@ def main(page: ft.Page):
                                 for x in DATABASE[k]: 
                                     if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.DESCRIPTION, "cyan"))
 
-                elif idx == 2:
+                elif idx == 2: # Syllabus
                     body_content.controls.append(ft.Text("LATEST SYLLABUS", color="purple", weight="bold"))
                     for x in DATABASE.get("syllabus_2025", []): 
                         if match(x['title']): body_content.controls.append(create_card(x['title'], x['link'], ft.icons.LIST_ALT, "purple"))
 
-                elif idx == 3:
+                elif idx == 3: # Colleges
                     body_content.controls.append(ft.Text("ADMISSION TRACKER", color="green", weight="bold"))
                     for x in DATABASE.get("colleges", []):
                         if match(x['name']) or match(x['dept']): body_content.controls.append(create_college_card(x))
@@ -344,6 +422,7 @@ def main(page: ft.Page):
                 if e.control.selected_index == 4:
                     main_layout.content = ai_view
                     header_container.visible = False
+                    render_current_chat() # Load chat on switch
                 else:
                     main_layout.content = body_content
                     header_container.visible = True
@@ -363,7 +442,7 @@ def main(page: ft.Page):
                 ]
             )
 
-            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Dev: ZEROS\nVer: 23.0"))
+            info_dialog = ft.AlertDialog(title=ft.Text("About WB-NEXUS"), content=ft.Text("Dev: ZEROS\nVer: 25.0 (Ultimate)"))
             main_layout = ft.Container(content=body_content, expand=True)
             update_view() 
             page.add(ft.Column([header_container, main_layout], expand=True, spacing=0), nav_bar)
@@ -377,14 +456,12 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Icon(name=ft.icons.SHIELD_MOON, size=100, color="cyan"),
             ft.Text("WB-NEXUS", size=35, weight="bold", color="white"),
-            ft.Text("Your Academic Companion", size=14, color="grey"),
+            ft.Text("Student Portal", size=14, color="grey"),
             ft.Container(height=40),
             ft.ElevatedButton("ENTER APP", on_click=launch_app, height=50, width=200, 
                               style=ft.ButtonStyle(bgcolor="cyan", color="black"))
         ], alignment="center", horizontal_alignment="center"),
-        alignment=ft.alignment.center,
-        expand=True,
-        bgcolor="#0a0a0a"
+        alignment=ft.alignment.center, expand=True, bgcolor="#0a0a0a"
     )
 
     page.add(start_btn)
